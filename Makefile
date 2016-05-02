@@ -5,7 +5,10 @@ JC = javac
 	$(JC) $(JFLAGS) $*.java
 
 CLASSES = \
-	YamTorrent.java
+	YamTorrent.java \
+	BencodeReader.java \
+	BencodeWriter.java \
+	BencodeReadException.java
 
 default: classes
 

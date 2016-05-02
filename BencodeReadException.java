@@ -10,7 +10,7 @@
  *
  * You must not remove this notice, or any other, from this software.
  */
-package com.hypirion.bencode;
+// package com.hypirion.bencode;
 
 /**
  * A BencodeReadException is an encoding exception during a Bencode Read.
