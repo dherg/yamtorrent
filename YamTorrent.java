@@ -11,7 +11,7 @@ import java.util.*;
 
 class YamTorrent {
 
-	public static int readBencodedFile(String filename) {
+	public static Map<String, Object> readBencodedFile(String filename) {
 
 		// open up filename
 		File f = new File(filename);
@@ -50,12 +50,10 @@ class YamTorrent {
 
 	public static void main(String args[]) {
 		
-		System.out.println("down with yam, up with lamb");
-
 		// Get the torrent file name from args
 		String filename = args[0];
 
-		System.out.println("filename = " + filename);
+		// System.out.println("filename = " + filename);
 
 		Map<String, Object> dict;
 		dict = readBencodedFile(filename);
