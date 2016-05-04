@@ -49,6 +49,8 @@ class YamTorrent {
 	}
 
 	public static void main(String args[]) {
+		
+		System.out.println("down with yam, up with lamb");
 
 		// Get the torrent file name from args
 		String filename = args[0];
