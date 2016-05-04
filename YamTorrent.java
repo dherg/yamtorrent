@@ -1,7 +1,7 @@
 /* 	YamTorrent.java
 *
 * 	David Hergenroeder (david.hergenroeder@yale.edu)
-* 
+*   Lincoln Swaine-Moore (lswainemoore@gmail.com)
 *
 */
 
