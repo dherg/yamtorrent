@@ -50,6 +50,8 @@ class YamTorrent {
 
 	public static void main(String args[]) {
 		
+		System.out.println("long live lambtorrent");
+
 		// Get the torrent file name from args
 		String filename = args[0];
 
