@@ -6,7 +6,11 @@ import hashlib
 def main():
 
 	# open file in binary
-	torrentfile = open(sys.argv[1], "rb").read()
+	try:
+		torrentfile = open(sys.argv[1], "rb").read()
+	except IOError:
+		print("BAD FILE NAME: " + sys.argv[1])
+		exit()
 
 	# dictionary of torrent file
 	torrentdict = bencode.bdecode(torrentfile)
@@ -22,6 +26,7 @@ def main():
 	# print(type(bencodedinfo))
 	for char in infohash:
 		print(hex(ord(char)))
+
 
 
 
