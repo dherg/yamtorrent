@@ -7,13 +7,13 @@ import struct
 import socket
 
 
-
-def DEBUG(s):
+def DEBUG(*s):
     if debugging:
-        print(s)
+        print(*s)
 
-def ERROR(s):
-    print(s)
+
+def ERROR(*s):
+    print(*s)
     exit()
 
 def main():
@@ -66,7 +66,7 @@ def main():
     url = torrentdict[b'announce']
 
     p = {'info_hash': info_hash, 'peer_id': peer_id, 'port': port, 'uploaded': uploaded, 'downloaded': downloaded, 'left': left, 'compact': compact, 'event': event}
-    
+
     #CONTACT TRACKER
     r = requests.get(url.decode(), params=p)
 
@@ -88,7 +88,7 @@ def main():
     except bencodepy.exceptions.DecodingError:
         ERROR("BAD RESPONSE")
 
-    #COMPUTE PEERS 
+    #COMPUTE PEERS
 
     peers = response[b'peers']
     peers_list = []
@@ -109,7 +109,7 @@ def main():
     first_connection = socket.create_connection((first_peer['ip'],first_peer['port']))
     DEBUG(type(first_connection))
 
-    handshake = b"handshake: " + struct.pack('!B',19) + b"BitTorrent protocol" + bytearray(8) + info_hash + peer_id
+    handshake = struct.pack('!B',19) + b"BitTorrent protocol" + bytearray(8) + info_hash + peer_id
     DEBUG(handshake)
     DEBUG(len(handshake))
     DEBUG(len(info_hash))
@@ -119,7 +119,7 @@ def main():
 
     peer_response = first_connection.recv(4096)
 
-    DEBUG(peer_response)
+    DEBUG("handshake response", peer_response)
 
 
 
