@@ -44,7 +44,7 @@ def main():
 	port = "6881"
 	uploaded = "0"
 	downloaded = "0"
-	
+
 	try:
 		left = 0
 		for f in info[b"files"]:
@@ -57,10 +57,9 @@ def main():
 
 	url = torrentdict[b"announce"]
 
-	p = {"info_hash": info_hash, "peer_id": peer_id, "port": port, "uploaded": uploaded, "downloaded": downloaded, "left": left, "compact": compact, "event": event}
-	r = requests.get(url, params = p)
 
-	
+	p = {"info_hash": info_hash, "peer_id": peer_id, "port": port, "uploaded": uploaded, "downloaded": downloaded, "left": left, "compact": compact, "event": event}
+	r = requests.get(url.decode(), params=p)
 
 	# print(info_hash)
 	# print(bencodedinfo)
@@ -72,21 +71,13 @@ def main():
 	print(r.url)
 	print(r.text[0])
 	print(r.text[362])
-	print(len(r.text))
-	print(type(r.text))
-	rt = r.text.encode()
-	print(rt[0])
-	print(rt[362])
-	print(len(rt))
-	print(type(rt))
-	print(rt)
+	print('CONTENT')
+	print(r.content)
+	print('END CONTENT')
 
 	#this doesn't work
-	response = bencodepy.decode(r.text.encode())
+	response = bencodepy.decode(r.content)
 	print(response)
-
-
-
 
 
 if __name__ == "__main__":
