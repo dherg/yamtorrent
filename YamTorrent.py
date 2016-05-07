@@ -3,17 +3,27 @@ import sys
 import requests
 import hashlib
 import bencodepy
+import struct
+import socket
 
+
+
+def DEBUG(s):
+    if debugging:
+        print(s)
+
+def ERROR(s):
+    print(s)
+    exit()
 
 def main():
     # open file in binary
     try:
         torrentfile = open(sys.argv[1], "rb").read()
     except IOError:
-        print("BAD FILE NAME: " + sys.argv[1])
-        exit()
+        ERROR("BAD FILE NAME: " + sys.argv[1])
 
-        print("BEGINNING")
+    DEBUG("BEGINNING")
 
     # dictionary of torrent file
     # torrentdict = bencode.bdecode(torrentfile)
@@ -56,6 +66,8 @@ def main():
     url = torrentdict[b'announce']
 
     p = {'info_hash': info_hash, 'peer_id': peer_id, 'port': port, 'uploaded': uploaded, 'downloaded': downloaded, 'left': left, 'compact': compact, 'event': event}
+    
+    #CONTACT TRACKER
     r = requests.get(url.decode(), params=p)
 
     # print(info_hash)
@@ -64,16 +76,47 @@ def main():
     # with open("temp.txt",'wb') as f:
     #   f.write(r.text.encode())
 
-    print(r.text)
-    print(r.url)
-    print(r.text[0])
-    print(r.text[362])
-    print('CONTENT')
-    print(r.content)
-    print('END CONTENT')
+    DEBUG('URL')
+    DEBUG(r.url)
+    DEBUG('END URL')
+    DEBUG('CONTENT')
+    DEBUG(r.content)
+    DEBUG('END CONTENT')
 
-    response = bencodepy.decode(r.content)
-    print(response)
+    try:
+        response = bencodepy.decode(r.content)
+    except bencodepy.exceptions.DecodingError:
+        ERROR("BAD RESPONSE")
+
+    #COMPUTE PEERS 
+
+    peers = response[b'peers']
+    peers_list = []
+    for i in range(0,len(peers),6):
+
+        peer_dict = {}
+
+        #not sure if these are right
+        peer_dict['ip'] = socket.inet_ntoa(peers[i:i+4])
+        peer_dict['ip_int'] = struct.unpack("!L",peers[i:i+4])[0]
+        peer_dict['port'] = struct.unpack("!H",peers[i+4:i+6])[0]
+
+        peers_list.append(peer_dict)
+
+    DEBUG(peers_list)
+
+    first_peer = peers_list[0]
+    first_connection = socket.create_connection((first_peer['ip'],first_peer['port']))
+    DEBUG(type(first_connection))
+
+    handshake = b"handshake: " + struct.pack('!b',19) + b"BitTorrent protocol" + b"00000000" + info_hash + peer_id
+    DEBUG(handshake)
+    DEBUG(len(handshake))
+
+
 
 if __name__ == '__main__':
+
+    debugging = True
+
     main()
