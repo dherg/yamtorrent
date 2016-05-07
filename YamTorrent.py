@@ -109,9 +109,17 @@ def main():
     first_connection = socket.create_connection((first_peer['ip'],first_peer['port']))
     DEBUG(type(first_connection))
 
-    handshake = b"handshake: " + struct.pack('!b',19) + b"BitTorrent protocol" + b"00000000" + info_hash + peer_id
+    handshake = b"handshake: " + struct.pack('!B',19) + b"BitTorrent protocol" + bytearray(8) + info_hash + peer_id
     DEBUG(handshake)
     DEBUG(len(handshake))
+    DEBUG(len(info_hash))
+    DEBUG(len(peer_id))
+
+    first_connection.sendall(handshake)
+
+    peer_response = first_connection.recv(4096)
+
+    DEBUG(peer_response)
 
 
 
