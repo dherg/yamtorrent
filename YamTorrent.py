@@ -5,7 +5,7 @@ import hashlib
 import bencodepy
 import struct
 import socket
-
+import yamtorrent.handshakeclient as handshakeclient
 
 def DEBUG(*s):
     if debugging:
@@ -106,20 +106,22 @@ def main():
     DEBUG(peers_list)
 
     first_peer = peers_list[0]
-    first_connection = socket.create_connection((first_peer['ip'],first_peer['port']))
-    DEBUG(type(first_connection))
+    # first_connection = socket.create_connection((first_peer['ip'],first_peer['port']))
+    # DEBUG(type(first_connection))
 
-    handshake = struct.pack('!B',19) + b"BitTorrent protocol" + bytearray(8) + info_hash + peer_id
-    DEBUG(handshake)
-    DEBUG(len(handshake))
-    DEBUG(len(info_hash))
-    DEBUG(len(peer_id))
+    handshakeclient.connectHandshakeClient(first_peer['ip'], first_peer['port'], info_hash, peer_id)
 
-    first_connection.sendall(handshake)
+    # handshake = struct.pack('!B',19) + b"BitTorrent protocol" + bytearray(8) + info_hash + peer_id
+    # DEBUG(handshake)
+    # DEBUG(len(handshake))
+    # DEBUG(len(info_hash))
+    # DEBUG(len(peer_id))
 
-    peer_response = first_connection.recv(4096)
+    # first_connection.sendall(handshake)
 
-    DEBUG("handshake response", peer_response)
+    # peer_response = first_connection.recv(4096)
+
+    # DEBUG("handshake response", peer_response)
 
 
 
