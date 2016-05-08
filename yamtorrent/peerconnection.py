@@ -23,6 +23,15 @@ class PeerConnection(object):
         self._protocol = protocol
         self.buf = bytearray()
 
+        # need to keep track of choking/interested state for self and peer
+        # connections start out as choking and not interested
+        self.am_choking = True
+        self.am_interested = False
+        self.peer_choking = True
+        self.peer_interested = False
+
+
+
     def connect(self, reactor):
         self.done = Deferred()
         d = (TCP4ClientEndpoint(reactor, self.peer_info.ip, self.peer_info.port)
@@ -56,22 +65,26 @@ class PeerConnection(object):
 
     def rcv_choke(self, msg, msg_length):
         print('rcv_choke', msg_length)
+        self.peer_choking = True
         pass
 
     def rcv_unchoke(self, msg, msg_length):
         print('rcv_unchoke', msg_length)
+        self.peer_choking = False
         pass
 
     def rcv_interested(self, msg, msg_length):
         print('rcv_interested', msg_length)
+        self.peer_interested = True
         pass
 
     def rcv_notinterested(self, msg, msg_length):
         print('rcv_notinterested', msg_length)
+        self.peer_interested = False
         pass
 
     def rcv_have(self, msg, msg_length):
-        print('rcv_hav', msg_length)
+        print('rcv_have', msg_length)
         pass
 
     def rcv_bitfield(self, msg, msg_length):
