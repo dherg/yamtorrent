@@ -121,8 +121,8 @@ class PeerConnection(object):
             peer_id = self.buf[pstrlen+29:pstrlen+49]
 
             #check that this is the handshake receipt
-            if (pstr == b"BitTorrent protocol") and (info_hash == self.meta.info_hash):
-                
+            if (pstr == b"BitTorrent protocol") and (info_hash == self.meta.info_hash()):
+
                 self.state = self._States.LATER
                 data = self.buf[:pstrlen+49]
 
