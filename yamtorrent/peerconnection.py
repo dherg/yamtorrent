@@ -57,12 +57,39 @@ class PeerConnection(object):
         # self.transport.write(msg)
         # self.state = self._States.WAIT_BITFIELD
 
-    # send an 'interested' message to the peer (untested)
-    def send_interested(self):
-        print('sending interested')
+
+    def send_keepalive(self):
+        print('send_keepalive to', self.peer_info)
+        msg = struct.pack('!I', 0)
+        self._protocol.tx_data(msg)
+        pass
+
+    def send_choke(self):
+        print('send_choke to', self.peer_info)
+        msg = struct.pack('!I', 1) + struct.pack('!B', 0)
+        self._protocol.tx_data(msg)
+        self.am_choking = True
+        pass
+
+    def send_unchoke(self):
+        print('send_unchoke to', self.peer_info)
         msg = struct.pack('!I', 1) + struct.pack('!B', 1)
         self._protocol.tx_data(msg)
+        self.am_choking = False
+        pass
+
+    def send_interested(self):
+        print('send_interested to', self.peer_info)
+        msg = struct.pack('!I', 1) + struct.pack('!B', 2)
+        self._protocol.tx_data(msg)
         self.am_interested = True
+
+    def send_notinterested(self):
+        print('send_notinterested to', self.peer_info)
+        msg = struct.pack('!I', 1) + struct.pack('!B', 3)
+        self._protocol.tx_data(msg)
+        self.am_interested = False
+        pass
 
 
     def rcv_keepalive(self):
@@ -101,6 +128,7 @@ class PeerConnection(object):
         bitfield = BitArray(bytes=msg[1:msg_length-1])
         print(bitfield)
         # self.done.callback(bitfield)
+
 
     def rcv_request(self, msg, msg_length):
         print('rcv_request', msg_length)
