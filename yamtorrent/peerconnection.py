@@ -31,7 +31,6 @@ class PeerConnection(object):
         self.peer_interested = False
 
 
-
     def connect(self, reactor):
         self.done = Deferred()
         d = (TCP4ClientEndpoint(reactor, self.peer_info.ip, self.peer_info.port)
@@ -57,6 +56,14 @@ class PeerConnection(object):
         msg = bytearray(2)
         # self.transport.write(msg)
         # self.state = self._States.WAIT_BITFIELD
+
+    # send an 'interested' message to the peer (untested)
+    def send_interested(self):
+        print('sending interested')
+        msg = struct.pack('!I', 1) + struct.pack('!B', 1)
+        self._protocol.tx_data(msg)
+        self.am_interested = True
+
 
     def rcv_keepalive(self):
         print('rcv_keepalive')
