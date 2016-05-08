@@ -1,14 +1,4 @@
+from .peerinfo import PeerInfo
 from .peerconnection import PeerConnection
 from .torrentmetadata import TorrentMetadata
-
-
-class PeerInfo:
-    def __init__(self, ip, port):
-        self.ip = ip
-        self.port = port
-
-    def __str__(self):
-        return '{}:{}'.format(self.ip, self.port)
-
-    def __repr__(self):
-        return '<PeerInfo object {}>'.format(str(self))
+from .trackerconnection import TrackerConnection
