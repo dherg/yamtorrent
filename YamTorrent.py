@@ -56,61 +56,25 @@ def main():
     # CONTACT TRACKER
     r = requests.get(url.decode(), params=p)
 
-    # print(info_hash)
-    # print(bencodedinfo)
-
-    # with open("temp.txt",'wb') as f:
-    #   f.write(r.text.encode())
-
-    DEBUG('URL')
-    DEBUG(r.url)
-    DEBUG('END URL')
-    DEBUG('CONTENT')
-    DEBUG(r.content)
-    DEBUG('END CONTENT')
-
     try:
         response = bencodepy.decode(r.content)
     except bencodepy.exceptions.DecodingError:
         ERROR("BAD RESPONSE")
 
-    #COMPUTE PEERS
+    def make_peer(peer_data):
+        return PeerInfo(ip=socket.inet_ntoa(peer_data[0]),
+                        port=peer_data[1])
+    peers = list(map(make_peer, struct.iter_unpack('!4sH', response[b'peers'])))
 
-    peers = response[b'peers']
-    peers_list = []
-    for i in range(0, len(peers), 6):
+    print('Tracker returned', len(peers), 'peers.')
 
-        peer_info = PeerInfo(ip=socket.inet_ntoa(peers[i:i+4]),
-                             port=struct.unpack("!H", peers[i+4:i+6])[0])
-
-        peers_list.append(peer_info)
-
-    DEBUG(list(map(str, peers_list)))
-
-    first_peer = PeerConnection(meta_info, peers_list[0])
-    # first_connection = socket.create_connection((first_peer['ip'],first_peer['port']))
-    # DEBUG(type(first_connection))
-
+    print('Connecting to peer:', str(peers[0]))
+    first_peer = PeerConnection(meta_info, peers[0])
     first_peer.connect(reactor)
 
     reactor.run()
 
-    # handshake = struct.pack('!B',19) + b"BitTorrent protocol" + bytearray(8) + info_hash + peer_id
-    # DEBUG(handshake)
-    # DEBUG(len(handshake))
-    # DEBUG(len(info_hash))
-    # DEBUG(len(peer_id))
-
-    # first_connection.sendall(handshake)
-
-    # peer_response = first_connection.recv(4096)
-
-    # DEBUG("handshake response", peer_response)
-
-
 
 if __name__ == '__main__':
-
     debugging = True
-
     main()

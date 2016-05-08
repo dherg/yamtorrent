@@ -1,9 +1,9 @@
 import sys
 import struct
-from twisted.internet.defer import Deferred
-from twisted.internet.protocol import ClientFactory
-from twisted.internet.protocol import Protocol
+from bitstring import BitArray
 from twisted.internet import reactor
+from twisted.internet.defer import Deferred
+from twisted.internet.protocol import ClientFactory, Protocol
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from enum import Enum
 
@@ -26,7 +26,7 @@ class PeerConnection(object):
     def connect(self, reactor):
         self.done = Deferred()
         d = (TCP4ClientEndpoint(reactor, self.peer_info.ip, self.peer_info.port)
-                     .connect(ProtocolAdapterFactory(self)))
+             .connect(ProtocolAdapterFactory(self)))
         # d.addErrback(self.connection_failed)
         self.state = self._States.WAIT_CONNECT
 
@@ -77,18 +77,9 @@ class PeerConnection(object):
     def rcv_bitfield(self, msg, msg_length):
         # parse bitfield
         # store bitfield locally
-        print('rcv_bitfield:', msg)
-        # message_length = struct.unpack(">i",msg[:4])[0]
-        # print('length', message_length)
-        # print(len(msg))
-        # print(msg[0])
-        # print(msg[1])
-        # print(msg[2])
-        # print(msg[3])
-        # print(msg[4])
-        # print(msg[0:5])
-        # print(len(msg[0:5]))
-        bitfield = ()
+        print('rcv_bitfield:', msg_length-1)
+        bitfield = BitArray(bytes=msg[1:msg_length-1])
+        print(bitfield)
         # self.done.callback(bitfield)
 
     def rcv_request(self, msg, msg_length):
@@ -107,20 +98,17 @@ class PeerConnection(object):
         print('rcv_port', msg_length)
         pass
 
-
     def process_buf(self):
-
-
-        #if this should a received handshake
+        # if this should a received handshake
         if (len(self.buf) > 0) and (len(self.buf) >= 49 + self.buf[0]) and (self.state == self._States.WAIT_HANDSHAKE):
-            
+
             pstrlen = self.buf[0]
             pstr = self.buf[1:pstrlen + 1]
             reserved = self.buf[pstrlen + 1:pstrlen + 9]
             info_hash = self.buf[pstrlen + 9:pstrlen+29]
             peer_id = self.buf[pstrlen+29:pstrlen+49]
 
-            #check that this is the handshake receipt
+            # check that this is the handshake receipt
             if (pstr == b"BitTorrent protocol") and (info_hash == self.meta.info_hash()):
 
                 self.state = self._States.LATER
@@ -129,36 +117,30 @@ class PeerConnection(object):
                 self.buf = self.buf[pstrlen+49:]
                 print('handshake match.')
 
-                return data,0
+                return data, 0
 
             else:
                 print('PROBABLY SHOULD DROP CONNECTION B/C BAD HANDSHAKE')
 
-        
-
-
-        #if we don't even have a length at the start
+        # if we don't even have a length at the start
         if len(self.buf) < 4:
-            return None,0
+            return None, 0
 
-        msg_length = struct.unpack("!i",self.buf[:4])[0]
+        msg_length = struct.unpack("!i", self.buf[:4])[0]
 
-        print('process_buf len=', len(self.buf), 'want=', msg_length, 'type = ', self.buf[4])
-
-
-        #if we have the full message in the buffer
+        # if we have the full message in the buffer
         if len(self.buf) >= 4 + msg_length:
             data = self.buf[:msg_length+4]
 
-            #remove message from buffer
+            # remove message from buffer
             self.buf = self.buf[msg_length+4:]
 
-            return data,msg_length
+            return data, msg_length
 
-        return None,0
+        print('process_buf[unhandled] len=', len(self.buf), 'want=', msg_length, 'type = ', self.buf[4])
+        return None, 0
 
     def handle_message(self, msg, msg_length):
-
         # if this is a keep-alive
         if msg_length == 0:
             self.rcv_keepalive()
@@ -179,12 +161,7 @@ class PeerConnection(object):
             9: self.rcv_port
         }
 
-        options[msg_type](msg, msg_length)
-
-
-
-
-
+        options[msg_type](msg[4:], msg_length)
 
     # this is called async by your event loop
     def rx_data(self, data):
@@ -192,7 +169,6 @@ class PeerConnection(object):
         self.buf += data
 
         next_message, msg_length = self.process_buf()
-        print(next_message, msg_length)
 
         if next_message is not None:
             self.handle_message(next_message, msg_length)

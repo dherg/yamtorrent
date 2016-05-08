@@ -3,6 +3,7 @@ import hashlib
 import bencodepy
 
 class TorrentMetadata(object):
+    PIECE_HASH_SIZE = 20
 
     def __init__(self, filename=None, peer_id=None):
         filename = filename if filename else glob.glob('*.torrent')[0]
@@ -32,6 +33,9 @@ class TorrentMetadata(object):
                     self._folder = info[b'name']
                     self._files = [(f[b'path'], f[b'length']) for f in info[b'files']]
                     self._length = sum([l for (p, l) in self._files])
+
+                self._num_pieces = len(info[b'pieces'])/self.PIECE_HASH_SIZE
+                self._piece_length = info[b'piece length']
             except KeyError:
                 raise ValueError('Invalid Torrent File: Missing a field!')
 
@@ -49,3 +53,9 @@ class TorrentMetadata(object):
 
     def name(self):
         return self._name
+
+    def num_pieces(self):
+        return self._num_pieces
+
+    def piece_length(self):
+        return self._piece_length
