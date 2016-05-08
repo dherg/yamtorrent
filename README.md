@@ -1,2 +1,2 @@
 # YamTorrent
-## a BitTorrent Client by David, Micah, and Lincoln 
+## a BitTorrent client by David, Micah, and Lincoln 
