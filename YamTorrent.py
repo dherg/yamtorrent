@@ -7,7 +7,7 @@ import struct
 import socket
 import os
 from twisted.internet import reactor
-from yamtorrent import PeerInfo, TorrentMetadata, PeerConnection
+from yamtorrent import PeerInfo, TorrentMetadata, PeerConnection, TorrentFile
 
 def DEBUG(*s):
     if debugging:
@@ -20,47 +20,27 @@ def ERROR(*s):
 
 def main():
     # open file in binary
+    torrent = None
     try:
-        torrentfile = open(sys.argv[1], "rb").read()
-    except IOError:
-        ERROR("BAD FILE NAME: " + sys.argv[1])
+        filename = sys.argv[1] if len(sys.argv) > 0 else None
+        torrent = TorrentFile(filename)
+    except FileNotFoundError:
+        ERROR("BAD FILE NAME: " + filename)
 
     DEBUG("BEGINNING")
 
     # dictionary of torrent file
-    # torrentdict = bencode.bdecode(torrentfile)
-    torrentdict = bencodepy.decode(torrentfile)
-    # print(torrentdict)
-    # print(type(torrentdict))
-
-    # re-bencode the info section
-    info = torrentdict[b"info"]
-    # print(info)
-    bencodedinfo = bencodepy.encode(info)
-    # print(info)
-    # print(bencodedinfo)
-
-    #COMPUTE PARAMETERS FOR ANNOUNCE
-
-    # SHA1 hash of info section
-    sha1 = hashlib.sha1(bencodedinfo)
-    info_hash = sha1.digest()
-    # print(type(bencodedinfo))
-    # for char in info_hash:
-    #   print(hex(char))
-    #   print(char)
+    torrentdict = torrent.torrent_dict
+    info_hash = torrent.info_hash
+    info = torrent.info
 
     peer_id = b"-YT0001-" + os.urandom(12)
     port = b'6881'
     uploaded = b'0'
     downloaded = b'0'
 
-    try:
-        left = 0
-        for f in info[b'files']:
-            left += f[b'length']
-    except KeyError:
-        left = info[b'length']
+    left = torrent.get_length()
+    print("left:", left)
 
     compact = b'1'
     event = b'started'

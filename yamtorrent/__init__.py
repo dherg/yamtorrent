@@ -1,4 +1,5 @@
 from .peerconnection import PeerConnection
+from .torrentfile import TorrentFile
 
 
 class PeerInfo:
