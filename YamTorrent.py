@@ -47,9 +47,16 @@ def main():
 
     url = torrentdict[b'announce']
 
-    p = {'info_hash': info_hash, 'peer_id': peer_id, 'port': port, 'uploaded': uploaded, 'downloaded': downloaded, 'left': left, 'compact': compact, 'event': event}
+    p = {'info_hash': info_hash,
+         'peer_id': peer_id,
+         'port': port,
+         'uploaded': uploaded,
+         'downloaded': downloaded,
+         'left': left,
+         'compact': compact,
+         'event': event}
 
-    #CONTACT TRACKER
+    # CONTACT TRACKER
     r = requests.get(url.decode(), params=p)
 
     # print(info_hash)

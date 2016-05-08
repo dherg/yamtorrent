@@ -10,27 +10,40 @@ class TorrentFile(object):
             raise FileNotFoundError()
 
         with open(filename, 'rb') as torrentfile:
-            self.torrent_dict = bencodepy.decode(torrentfile.read())
+            self._metadata = bencodepy.decode(torrentfile.read())
 
-            # re-bencode the info section
-            self.info = self.torrent_dict[b"info"]
-            bencodedinfo = bencodepy.encode(self.info)
+            try:
+                # re-bencode the info section
+                info = self._metadata[b"info"]
 
-            # SHA1 hash of info section
-            self.info_hash = hashlib.sha1(bencodedinfo).digest()
+                # SHA1 hash of info section
+                self._info_hash = hashlib.sha1(bencodepy.encode(info)).digest()
+                self._name = info[b'name']
+                self._announce = self._metadata[b'announce']
 
-    def get_file_list(self):
-        try:
-            return self.info[b'files']
-        except KeyError:
-            return None
+                if b'length' in info:
+                    # torrent only has one file
+                    self._folder = ''
+                    self._files = list((info[b'name'], info[b'length']))
+                    self._length = info[b'length']
+                else:
+                    self._folder = info[b'name']
+                    self._files = [(f[b'path'], f[b'length']) for f in info[b'files']]
+                    self._length = sum([l for (p, l) in self._files])
+            except KeyError:
+                raise ValueError('Invalid Torrent File: Missing a field!')
 
-    def get_length(self):
-        files = self.get_file_list()
-        length = 0
-        if files:
-            for f in files:
-                length += f[b'length']
-        else:
-            length = self.info[b'length']
-        return length
+    def announce(self):
+        return self._announce
+
+    def info_hash(self):
+        return self._info_hash
+
+    def file_list(self):
+        return self._files
+
+    def full_length(self):
+        return self._length
+
+    def name(self):
+        return self._name
