@@ -7,7 +7,7 @@ import struct
 import socket
 import os
 from twisted.internet import reactor
-from yamtorrent import PeerInfo, TorrentMetadata, PeerConnection, TorrentFile
+from yamtorrent import PeerInfo, TorrentMetadata, PeerConnection
 
 def DEBUG(*s):
     if debugging:
@@ -19,33 +19,30 @@ def ERROR(*s):
     exit()
 
 def main():
-    # open file in binary
-    torrent = None
+    peer_id = b"-YT0001-" + os.urandom(12)
+    meta_info = None
     try:
         filename = sys.argv[1] if len(sys.argv) > 0 else None
-        torrent = TorrentFile(filename)
+        meta_info = TorrentMetadata(filename, peer_id)
     except FileNotFoundError:
         ERROR("BAD FILE NAME: " + filename)
 
     DEBUG("BEGINNING")
 
     # dictionary of torrent file
-    torrentdict = torrent.torrent_dict
-    info_hash = torrent.info_hash
-    info = torrent.info
+    info_hash = meta_info.info_hash()
 
-    peer_id = b"-YT0001-" + os.urandom(12)
     port = b'6881'
     uploaded = b'0'
     downloaded = b'0'
 
-    left = torrent.get_length()
+    left = meta_info.full_length()
     print("left:", left)
 
     compact = b'1'
     event = b'started'
 
-    url = torrentdict[b'announce']
+    url = meta_info.announce()
 
     p = {'info_hash': info_hash,
          'peer_id': peer_id,
@@ -78,7 +75,6 @@ def main():
         ERROR("BAD RESPONSE")
 
     #COMPUTE PEERS
-    torrent_meta = TorrentMetadata(info_hash, peer_id)
 
     peers = response[b'peers']
     peers_list = []
@@ -91,7 +87,7 @@ def main():
 
     DEBUG(list(map(str, peers_list)))
 
-    first_peer = PeerConnection(torrent_meta, peers_list[0])
+    first_peer = PeerConnection(meta_info, peers_list[0])
     # first_connection = socket.create_connection((first_peer['ip'],first_peer['port']))
     # DEBUG(type(first_connection))
 

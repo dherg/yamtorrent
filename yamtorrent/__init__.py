@@ -1,5 +1,5 @@
 from .peerconnection import PeerConnection
-from .torrentfile import TorrentFile
+from .torrentmetadata import TorrentMetadata
 
 
 class PeerInfo:
@@ -12,9 +12,3 @@ class PeerInfo:
 
     def __repr__(self):
         return '<PeerInfo object {}>'.format(str(self))
-
-
-class TorrentMetadata:
-    def __init__(self, info_hash, peer_id):
-        self.info_hash = info_hash
-        self.peer_id = peer_id

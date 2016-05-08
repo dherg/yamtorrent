@@ -33,7 +33,7 @@ class PeerConnection(object):
         return d
 
     def request_handshake(self):
-        msg = struct.pack('!B', 19) + b"BitTorrent protocol" + bytearray(8) + self.meta.info_hash + self.meta.peer_id
+        msg = struct.pack('!B', 19) + b"BitTorrent protocol" + bytearray(8) + self.meta.info_hash() + self.meta.peer_id
         self._protocol.tx_data(msg)
         self.state = self._States.WAIT_HANDSHAKE
 

@@ -2,12 +2,14 @@ import glob
 import hashlib
 import bencodepy
 
-class TorrentFile(object):
+class TorrentMetadata(object):
 
-    def __init__(self, filename=None):
+    def __init__(self, filename=None, peer_id=None):
         filename = filename if filename else glob.glob('*.torrent')[0]
         if not filename:
             raise FileNotFoundError()
+
+        self.peer_id = peer_id
 
         with open(filename, 'rb') as torrentfile:
             self._metadata = bencodepy.decode(torrentfile.read())
