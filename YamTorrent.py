@@ -5,7 +5,9 @@ import hashlib
 import bencodepy
 import struct
 import socket
-import yamtorrent.handshakeclient as handshakeclient
+import os
+from twisted.internet import reactor
+from yamtorrent import PeerInfo, TorrentMetadata, PeerConnection
 
 def DEBUG(*s):
     if debugging:
@@ -48,7 +50,7 @@ def main():
     #   print(hex(char))
     #   print(char)
 
-    peer_id = (hashlib.sha1(b"0")).digest()
+    peer_id = b"-YT0001-" + os.urandom(12)
     port = b'6881'
     uploaded = b'0'
     downloaded = b'0'
@@ -89,27 +91,27 @@ def main():
         ERROR("BAD RESPONSE")
 
     #COMPUTE PEERS
+    torrent_meta = TorrentMetadata(info_hash, peer_id)
 
     peers = response[b'peers']
     peers_list = []
-    for i in range(0,len(peers),6):
+    for i in range(0, len(peers), 6):
 
-        peer_dict = {}
+        peer_info = PeerInfo(ip=socket.inet_ntoa(peers[i:i+4]),
+                             ip_int=struct.unpack("!L", peers[i:i+4])[0],
+                             port=struct.unpack("!H", peers[i+4:i+6])[0])
 
-        #not sure if these are right
-        peer_dict['ip'] = socket.inet_ntoa(peers[i:i+4])
-        peer_dict['ip_int'] = struct.unpack("!L",peers[i:i+4])[0]
-        peer_dict['port'] = struct.unpack("!H",peers[i+4:i+6])[0]
+        peers_list.append(peer_info)
 
-        peers_list.append(peer_dict)
+    DEBUG(list(map(str, peers_list)))
 
-    DEBUG(peers_list)
-
-    first_peer = peers_list[0]
+    first_peer = PeerConnection(torrent_meta, peers_list[0])
     # first_connection = socket.create_connection((first_peer['ip'],first_peer['port']))
     # DEBUG(type(first_connection))
 
-    handshakeclient.connectHandshakeClient(first_peer['ip'], first_peer['port'], info_hash, peer_id)
+    first_peer.connect(reactor)
+
+    reactor.run()
 
     # handshake = struct.pack('!B',19) + b"BitTorrent protocol" + bytearray(8) + info_hash + peer_id
     # DEBUG(handshake)
