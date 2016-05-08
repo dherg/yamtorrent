@@ -2,9 +2,8 @@ from .peerconnection import PeerConnection
 
 
 class PeerInfo:
-    def __init__(self, ip, ip_int, port):
+    def __init__(self, ip, port):
         self.ip = ip
-        self.ip_int = ip_int
         self.port = port
 
     def __str__(self):
