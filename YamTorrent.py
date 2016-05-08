@@ -78,7 +78,6 @@ def main():
     for i in range(0, len(peers), 6):
 
         peer_info = PeerInfo(ip=socket.inet_ntoa(peers[i:i+4]),
-                             ip_int=struct.unpack("!L", peers[i:i+4])[0],
                              port=struct.unpack("!H", peers[i+4:i+6])[0])
 
         peers_list.append(peer_info)
