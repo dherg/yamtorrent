@@ -174,7 +174,7 @@ class PeerConnection(object):
         if len(self.buf) < 4:
             return None, 0
 
-        msg_length = struct.unpack("!i", self.buf[:4])[0]
+        msg_length = struct.unpack("!I", self.buf[:4])[0]
 
         # if we have the full message in the buffer
         if len(self.buf) >= 4 + msg_length:
