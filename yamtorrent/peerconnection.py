@@ -190,6 +190,11 @@ class PeerConnection(object):
 
     def rcv_have(self, msg, msg_length):
         print('rcv_have', msg_length)
+
+        # update bitfield to reflect
+        have_id = struct.unpack("!I",msg[1:msg_length])
+        self._bitfield[have_id] = 1
+
         pass
 
     def rcv_bitfield(self, msg, msg_length):
