@@ -101,11 +101,43 @@ it has a callback to the TorrentManager.
 
 Particular Design Choices We Made
 
---Twisted
+Twisted
 
---Buffer
+	This was one of the most important design choices we made. Via the
+recommendation of a blog post, we found this library, which enables 
+relatively easy asynchronous programming in Python. We used the 
+twisted to enable multiple peer connections to be operating independently
+and at their own pace, without opening multiple threads. Twisted permits
+callbacks that enable the TorrentManager to be notified when important 
+events occur at the PeerConnection level, such as a bitfield is received
+or a piece finishes downloading.
 
---Download pieces in order
+Buffer
+
+	Messages from peers can arrive in any number of packets, which is why
+the length header of a message is so important. No message should be read
+until the entirety of its length has arrived. To managed this aspect, we
+employed a buffer that was simply a bytearray. Whenever a new message
+arrives from a peer, it is appended to the buffer, and the front of the 
+buffer is checked to see the length of the first message that was in there.
+If the whole is present, the PeerConnectoin processes that message as is
+appropriate to its type, and checks to see if there are any more complete 
+messages in the buffer. The buffer thus offers the PeerConnection a
+simulation of the messages arriving as complete and distinct entities, 
+when in reality, they are split piecemeal across many packets.
+
+Download pieces in order
+
+	The TorrentManager maintains a list of pieces it desires in order.
+For every idle and unchoked peer found in a regular sweep of the peers,
+the TorrentManager looks through its desired pieces in order, and sees 
+whether the peer has that piece. If it does, it removes the piece from 
+the list, and tells the piece to start downloading. Currently the list 
+is in order from first piece to last piece. While not every peer will 
+have every piece, and so the downloading may occur slightly out of order,
+having the desired order be linear with the actual order is both simple
+and useful. In the event of say, streaming, it is useful to have earlier 
+pieces arrive earlier, so the file can be played faster.
 
 +--------------+
 | Dependencies |
