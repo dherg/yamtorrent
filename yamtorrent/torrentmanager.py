@@ -24,13 +24,11 @@ class TorrentManager(object):
         self.peer_id = peer_id
         self.num_ticks = 0
         self.tracker = None  # TrackerConnection
+        self.next_piece = 0
         self.mybitfield = BitArray(int(self.meta.num_pieces()))
 
-        # dict that maps PeerConnection to its bitfield
-        self.bitfields = {}
-
-        # dict mapping piece_id to list of PeerConnections with piece
-        # self.availability = [0] * int(self.meta.num_pieces())  # availability: 0 if no known peers with, or PeerConnection of peer with (?)
+        # dict mapping piece_id to a PeerConnection
+        self.requests = {}
 
         # dict mapping peer to Boolean connection state
         self._peers = []
@@ -54,34 +52,23 @@ class TorrentManager(object):
 
         self.create_temp_file()
 
-        def peer_did_connect(peer):
-            print('peer_did_connect')
-            bitfield = peer.get_bitfield()
-            if bitfield is not None:
-                if peer not in self._peers:
-                    self._peers.append(peer)
-                # do something else here?
-            else:
-                print('stopping peer')
-                peer.stop()
-            print(bitfield)
-
         def connect_to_peer(peer_info):
             print('Connecting to peer:', str(peer_info))
             p = PeerConnection(self.meta, peer_info)
-            p.connect(reactor).addCallback(peer_did_connect)
+            p.connect(reactor).addCallback(self.peer_did_connect)
 
-        def success(result):
+        def tracker_connect_success(result):
             peers = self.tracker.get_peers()
             print('Tracker returned', len(peers), 'peers.')
             # print(list(map(str, peers)))
             print(peers[0])
             connect_to_peer(peers[0])
 
-        def error(result):
-            print('error', result)
+        def tracker_connect_error(result):
+            print('tracker_connect_error', result)
 
-        self.tracker.start().addCallbacks(success, error)
+        self.tracker.start().addCallbacks(tracker_connect_success,
+                                          tracker_connect_error)
 
         LoopingCall(self.timer_tick).start(TICK_DELAY)
 
@@ -89,7 +76,59 @@ class TorrentManager(object):
 
     def timer_tick(self):
         self.num_ticks += 1
+
+        idle_peers = self.idle_peers()
+        if self.next_piece >= self.meta.num_pieces():
+            return
+
+        unchoked = filter(lambda p: not p.peer_choking(), idle_peers)
+        for p in unchoked:
+            self.requests[self.next_piece] = p
+            d = p.start_piece_download(self.next_piece)
+            d.addCallbacks(self.peer_piece_success, self.peer_piece_error)
+        # print('has_piece:', self.has_piece(1))
         # print('tick =', self.num_ticks)
+
+    def busy_peers(self):
+        return set([p for k, p in self.requests.items()])
+
+    def idle_peers(self):
+        return set(self._peers) - self.busy_peers()
+
+    def has_piece(self, piece_id):
+        return self.mybitfield[piece_id]
+
+    ######## PEER CALLBACKS  #################
+
+    def peer_did_connect(self, peer):
+        print('peer_did_connect', str(peer.peer_info))
+        bitfield = peer.get_bitfield()
+        if bitfield is not None:
+            self._peers.append(peer)
+            # do something else here?
+        else:
+            peer.stop()
+        print(bitfield)
+
+    def peer_piece_success(self, result):
+        (peer, piece_id, piece_array) = result
+        print('peer_received_piece', str(peer.peer_info))
+        print(piece_id)
+
+        # TODO this is not correct
+        self.next_piece = piece_id + 1
+
+        # TODO
+        # add to availability table to show that we have downloaded this piece
+
+        self.requests.pop(piece_id, None)
+
+
+    def peer_piece_error(self, peer, piece_id, error):
+        print('peer_piece_error', str(peer.peer_info))
+        pass
+
+
 
 
 # start n connections, query them for bitfield, aggregate bitfields into

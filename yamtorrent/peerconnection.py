@@ -27,6 +27,7 @@ class PeerConnection(object):
         self._protocol = protocol
         self._bitfield = None
         self.buf = bytearray()
+        self.piece_deferreds = {}
 
         # need to keep track of choking/interested state for self and peer
         # connections start out as choking and not interested
@@ -45,6 +46,7 @@ class PeerConnection(object):
 
     # called by TorrentManager to start download when this connection is unchoked
     def start_piece_download(self, piece_number):
+
         print('starting download piece', piece_number)
         self.send_interested()
         self.piece_number = piece_number
@@ -54,11 +56,14 @@ class PeerConnection(object):
 
         # test download
         self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
+        d = Deferred()
+        self.piece_deferreds[piece_number] = d
+        return d
 
     # should callback to TorrentManager
     # called when a piece is complete. the piece is in piece_array
     def piece_downloaded(self):
-        pass
+        self.piece_deferreds[self.piece_number].callback((self, self.piece_number, piece_array))
 
     def am_choking(self):
         return self._am_choking
@@ -114,7 +119,8 @@ class PeerConnection(object):
 
     def send_request(self, piece_number, offset, length):
         print('send_request piece', piece_number, 'offset', offset, 'length' , length, 'to', self.peer_info)
-        msg = struct.pack('!I', 13) + struct.pack('!B', 6) + struct.pack('!I', piece_number) + struct.pack('!I', int(offset)) + struct.pack('!I', length)
+
+        msg = struct.pack('!IBIII', 13, 6, piece_number, int(offset), length)
         self._protocol.tx_data(msg)
         pass
 
@@ -166,9 +172,6 @@ class PeerConnection(object):
     def rcv_unchoke(self, msg, msg_length):
         print('rcv_unchoke', msg_length)
         self._peer_choking = False
-
-        # test
-        self.start_piece_download(0)
 
         pass
 
