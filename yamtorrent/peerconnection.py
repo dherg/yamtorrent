@@ -50,9 +50,15 @@ class PeerConnection(object):
         if self._peer_choking:
             print('piece download requested but I\'m being choked...')
             return None # return error?
+
         # test download
         self.send_interested()
         self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
+
+    # should callback to TorrentManager
+    # called when a piece is complete. the piece is in piece_array
+    def piece_downloaded(self):
+        pass
 
     def am_choking(self):
         return self._am_choking
@@ -92,6 +98,7 @@ class PeerConnection(object):
         # self.transport.write(msg)
         # self.state = self._States.WAIT_BITFIELD
 
+
     # Once a piece is downloaded, validate it using the hash in torrent file before returning to TorrentManager
     def validate_piece(self, piece_array):
         print('validating piece', self.piece_number)
@@ -100,6 +107,7 @@ class PeerConnection(object):
         if thishash == self.meta.piece_hashes()[self.piece_number*self.PIECE_HASH_SIZE:self.PIECE_HASH_SIZE]:
             print('hash matched!')
             # should somehow pass piece to TorrentManager here
+            self.piece_downloaded()
         else:
             print('hash did not match...')
             # restart piece download? disconnect?
@@ -226,7 +234,6 @@ class PeerConnection(object):
         elif self._am_interested and not self._peer_choking:
             print('about to send again')
             self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
-
 
 
     def rcv_cancel(self, msg, msg_length):
