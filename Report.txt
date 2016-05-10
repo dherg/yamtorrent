@@ -10,17 +10,32 @@ by: David Hergenroeder (david.hergenroeder@yale.edu)
 
 Background on the BitTorrent Protocol
 
-        BitTorrent is a peer-to-peer Internet file sharing protocol 
-    that was designed by Bram Cohen in 2001. It has enjoyed widespread
-    success and adoption and is currently one of the most common 
-    protocols for peer-to-peer transfer of large files.
+    BitTorrent is a peer-to-peer Internet file sharing protocol that 
+was designed by Bram Cohen in 2001. It has enjoyed widespread success 
+and adoption and is currently one of the most common protocols for 
+peer-to-peer transfer of large files.
 
-        A BitTorrent downloads a file by joining a "swarm" of hosts
-    that are downloading and uploading the file simultaneously. This
-    is advantageous over other traditional client/server file transfer
-    protocols, especially for large files that are downloaded many
-    times, because it more efficiently distributes the work of 
-    uploading.
+    A BitTorrent downloads a file by joining a "swarm" of hosts that 
+are downloading and uploading the file simultaneously. This is 
+advantageous over other traditional client/server file transfer 
+protocols, especially for large files that are downloaded many times,
+because it more efficiently distributes the work of uploading.
+
+    A torrent is created by creating a .torrent file, which contains
+metadata that describe the file or files that make up the torrent, 
+such as the url of the tracker, the creation date, the size of the 
+file, the piece length, the number of pieces that make up the file,
+and a 20-byte SHA1 hash for each piece of the file.
+
+    The tracker is a host that maintains and makes available a list of
+peers for the torrent. When a BitTorrent client wants to download a
+file, they obtain the .torrent file, and issue a GET request to the
+tracker. The tracker responds with list of peers. The client can then
+begin to communicate with the peers directly to begin to download the
+file.
+
+    Peer-to-peer communication is done in BitTorrent via the following
+protocol. 
 
 
 
@@ -44,4 +59,9 @@ Particular Design Choices We Made
 +-----------------------+
 
 Areas for Future Improvement / Possible Future Features
+
+- torrents with multiple files
+- supporting udp trackers
+- pausing and later restarting torrents
+- creating torrents
 
