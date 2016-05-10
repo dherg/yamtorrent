@@ -57,6 +57,12 @@ class PeerConnection(object):
         # self.transport.write(msg)
         # self.state = self._States.WAIT_BITFIELD
 
+    def send_request(self, piece_number, offset, length):
+        print('send_request piece', piece_number, 'offset', offset, 'length' , length, 'to', self.peer_info)
+        msg = struct.pack('!I', 13) + struct.pack('!B', 6) + struct.pack('!I', piece_number) + struct.pack('!I', offset) + struct.pack('!I', length)
+        self._protocol.tx_data(msg)
+        pass
+
 
     def send_keepalive(self):
         print('send_keepalive to', self.peer_info)
@@ -105,6 +111,10 @@ class PeerConnection(object):
     def rcv_unchoke(self, msg, msg_length):
         print('rcv_unchoke', msg_length)
         self.peer_choking = False
+
+        # test (16KB request)
+        self.send_request(0, 0, 16384)
+
         pass
 
     def rcv_interested(self, msg, msg_length):
@@ -129,6 +139,9 @@ class PeerConnection(object):
         print(bitfield)
         # self.done.callback(bitfield)
 
+        # test
+        self.send_interested()
+
 
     def rcv_request(self, msg, msg_length):
         print('rcv_request', msg_length)
@@ -136,6 +149,7 @@ class PeerConnection(object):
 
     def rcv_piece(self, msg, msg_length):
         print('rcv_piece', msg_length)
+        print(msg)
         pass
 
     def rcv_cancel(self, msg, msg_length):
