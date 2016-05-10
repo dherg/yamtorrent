@@ -102,7 +102,7 @@ class TorrentManager(object):
     def timer_tick(self):
         self.num_ticks += 1
 
-        
+
 
         # could use num_ticks as a timer for timing out requests
         # would simply require us to pass the peerconnection the
@@ -119,6 +119,7 @@ class TorrentManager(object):
             # if we've got all the pieces
             if len(self.desire) == 0:
                 self.finished_downloading = True
+                print('WE HAVE ALL THE PIECES')
                 return 
             # if self.next_piece >= self.meta.num_pieces():
             #     return
@@ -164,6 +165,7 @@ class TorrentManager(object):
         print('peer_received_piece', str(peer.peer_info))
         print(piece_id)
 
+        #if we already had this piece, don't bother
         if self.mybitfield[piece_id] == 1:
             return
 
