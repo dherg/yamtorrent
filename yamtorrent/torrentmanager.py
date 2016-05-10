@@ -32,6 +32,7 @@ class TorrentManager(object):
 
         # dict mapping peer to Boolean connection state
         self._peers = []
+
         # file that we will write downloaded data to.
         self.file = None
 
@@ -117,16 +118,15 @@ class TorrentManager(object):
 
 
         #write this piece to file
-        self.write_piece_to_file(piece_id, piece_array)
+        self.write_piece_to_file(piece_id, piece_array)   
 
-        #note that we received this piece
-        self.mybitfield[piece_id] = 1
+        # add to availability table to show that we have downloaded this piece
+        self.mybitfield[piece_id] = 1     
 
         # TODO this is not correct
         self.next_piece = piece_id + 1
 
-        # TODO
-        # add to availability table to show that we have downloaded this piece
+        
 
         self.requests.pop(piece_id, None)
 
