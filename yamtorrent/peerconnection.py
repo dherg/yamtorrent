@@ -106,7 +106,6 @@ class PeerConnection(object):
 
         if thishash == self.meta.piece_hashes()[self.piece_number*self.PIECE_HASH_SIZE:self.PIECE_HASH_SIZE]:
             print('hash matched!')
-            # should somehow pass piece to TorrentManager here
             self.piece_downloaded()
         else:
             print('hash did not match...')
