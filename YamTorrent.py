@@ -10,7 +10,7 @@ from twisted.internet import reactor
 from twisted.internet.defer import Deferred
 from twisted.web.client import getPage
 
-from yamtorrent import PeerInfo, TorrentMetadata, PeerConnection, TrackerConnection
+from yamtorrent import PeerInfo, TorrentMetadata, PeerConnection, TrackerConnection, TorrentManager
 
 def DEBUG(*s):
     if debugging:
@@ -31,25 +31,8 @@ def main():
     except FileNotFoundError:
         ERROR('INVALID FILE NAME: ' + filename)
 
-    tracker = TrackerConnection(meta_info, port, peer_id)
-
-    def connect_to_peer(peer_info):
-        print('Connecting to peer:', str(peer_info))
-        first_peer = PeerConnection(meta_info, peer_info)
-        first_peer.connect(reactor)
-
-    def success(result):
-        peers = tracker.get_peers()
-        print('Tracker returned', len(peers), 'peers.')
-        # print(list(map(str, peers)))
-        connect_to_peer(peers[0])
-
-    def error(result):
-        print('error', result)
-
-    tracker.start().addCallbacks(success, error)
-
-    reactor.run()
+    torrent = TorrentManager(meta_info, port, peer_id)
+    torrent.start()
 
 
 if __name__ == '__main__':
