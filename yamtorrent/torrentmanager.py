@@ -40,18 +40,6 @@ class TorrentManager(object):
         print('creating blank file', self.meta.name().decode("utf-8") + '.part') # .part to indicate it is an incomplete file
         self.file = open(self.meta.name().decode("utf-8") + '.part', 'wb+')
 
-    def validate_bitfield(self, bitfield):
-        num_pieces = self.meta.num_pieces()
-        length = len(bitfield)
-        print('num_pieces', num_pieces)
-        print('length', length)
-        if (length < num_pieces or
-            (length > num_pieces and
-             any(bitfield[num_pieces:length]))):
-            return False
-        return True
-
-
     def start(self):
         self.tracker = TrackerConnection(self.meta, self.port, self.peer_id)
 
@@ -60,14 +48,11 @@ class TorrentManager(object):
         def peer_did_connect(peer):
             print('peer_did_connect')
             bitfield = peer.get_bitfield()
-            if bitfield is not None and self.validate_bitfield(bitfield):
-                self.bitfields[peer] = bitfield
-                print('valid bitfield')
+            if bitfield is not None:
                 if peer not in self._peers:
                     self._peers.append(peer)
+                # do something else here?
             else:
-                # remove peer
-                print('invalid bitfield')
                 peer.stop()
             print(bitfield)
 

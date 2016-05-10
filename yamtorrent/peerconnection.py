@@ -42,7 +42,7 @@ class PeerConnection(object):
         self.piece_number = 1
         self.next_offset = 0
         self.piece_array = bytearray()
-    
+
     # called by TorrentManager to start download when this connection is unchoked
     def start_piece_download(self, piece_number):
         print('starting download piece', piece_number)
@@ -182,10 +182,24 @@ class PeerConnection(object):
 
     def rcv_bitfield(self, msg, msg_length):
         # parse bitfield
-        # store bitfield locally
-        self._bitfield = BitArray(bytes=msg[1:msg_length])
-        self.done.callback(self)
+        bitfield = BitArray(bytes=msg[1:msg_length])
 
+        # validate bitfield
+        def validate_bitfield(bitfield):
+            num_pieces = self.meta.num_pieces()
+            length = len(bitfield)
+            if (length < num_pieces or
+                (length > num_pieces and
+                 any(bitfield[num_pieces:length]))):
+                return False
+            return True
+
+        if validate_bitfield(bitfield):
+            self._bitfield = bitfield
+        else:
+            self._bitfield = None
+
+        self.done.callback(self)
 
     def rcv_request(self, msg, msg_length):
         print('rcv_request', msg_length)
@@ -197,7 +211,7 @@ class PeerConnection(object):
         offset = int.from_bytes(msg[5:9], 'big')
         print('piece_number =', piece_number, 'offset =', offset)
 
-        # append to piece if it is the block we were looking for 
+        # append to piece if it is the block we were looking for
         if offset == self.next_offset * self.BLOCK_SIZE:
             self.piece_array = self.piece_array + msg[9:]
             self.next_offset = self.next_offset + 1
@@ -212,7 +226,7 @@ class PeerConnection(object):
         elif self._am_interested and not self._peer_choking:
             print('about to send again')
             self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
-        
+
 
 
     def rcv_cancel(self, msg, msg_length):
