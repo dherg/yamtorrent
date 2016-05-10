@@ -23,12 +23,13 @@ logger = logging.getLogger('TorrentManager')
 class TorrentManager(object):
 
     class _States(Enum):
-        INITIAL = 0
-        CONNECTING = 1
-        TRACKER = 2
+        INITIAL = 0        
+        TRACKER = 1
+        CONNECTING = 2
         DOWNLOADING = 3
         SEEDING = 4
         DONE = 5
+        IDLE = 6
 
     def __init__(self, meta, port, peer_id):
         self.meta = meta
@@ -54,6 +55,9 @@ class TorrentManager(object):
 
         # file that we will write downloaded data to.
         self.file = None
+
+    def finished_bitfield(self):
+        return all(self.mybitfield[0:int(self.meta.num_pieces())])
 
     # takes a bytearray (piece_array) and writes it to the correct
     # position in file (piece_number * piece_length)
@@ -134,7 +138,7 @@ class TorrentManager(object):
             idle_peers = self.idle_peers()
 
             # if we've got all the pieces
-            if len(self.desire) == 0:
+            if self.finished_bitfield():
 
                 # begin seeding
                 self.state == self._States.SEEDING
@@ -144,6 +148,11 @@ class TorrentManager(object):
                 return
             # if self.next_piece >= self.meta.num_pieces():
             #     return
+
+            # might not be finished, but can't do anything
+            if len(desired) == 0:
+                return
+
 
             # figure out which peers we can be using
             unchoked = filter(lambda p: not p.peer_choking(), idle_peers)
@@ -158,7 +167,10 @@ class TorrentManager(object):
                 d.addCallbacks(self.peer_piece_success, self.peer_piece_error)
 
         if self.state == self._States.SEEDING:
-            pass
+            self.state == self._States.DONE
+
+        if self.state == self._States.DONE:
+            logger.info('WE ARE QUITTING')
 
         # print('has_piece:', self.has_piece(1))
         # print('tick =', self.num_ticks)
