@@ -11,7 +11,8 @@ from enum import Enum
 
 class PeerConnection(object):
 
-    PIECE_HASH_SIZE = 20
+    PIECE_HASH_SIZE = 20 # BitTorrent standard
+    BLOCK_SIZE = 16384 # 16KB
 
     class _States(Enum):
         WAIT_CONNECT = 0
@@ -36,11 +37,21 @@ class PeerConnection(object):
         # storing the blocks of the piece we're working on until we get a full piece to
         # return to TorrentManager (or should we return every block on reciept and have
         # TorrentManager keep track of blocks in addition to pieces?)
-        # In this model the blocks of a piece are downloaded in order (0 to piece length/16384)
-        self.piece_number = 0
+        # In this model the blocks of a piece are downloaded in order (0 to piece length/BLOCK_SIZE)
+        self.piece_number = 1
         self.next_offset = 0
         self.piece_array = bytearray()
-        
+    
+    # called by TorrentManager to start download when this connection is unchoked
+    def start_piece_download(self, piece_number):
+        print('starting download piece', piece_number)
+        self.piece_number = piece_number
+        if self._peer_choking:
+            print('piece download requested but I\'m being choked...')
+            return None # return error?
+        # test download
+        self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
+
     def am_choking(self):
         return self._am_choking
 
@@ -52,7 +63,6 @@ class PeerConnection(object):
 
     def peer_interested(self):
         return self._peer_interested
-
 
     def connect(self, reactor):
         self.done = Deferred()
@@ -95,7 +105,8 @@ class PeerConnection(object):
 
     def send_request(self, piece_number, offset, length):
         print('send_request piece', piece_number, 'offset', offset, 'length' , length, 'to', self.peer_info)
-        msg = struct.pack('!I', 13) + struct.pack('!B', 6) + struct.pack('!I', piece_number) + struct.pack('!I', offset) + struct.pack('!I', length)
+        msg = struct.pack('!I', 13) + struct.pack('!B', 6) + struct.pack('!I', piece_number) + struct.pack('!I', int(offset)) + struct.pack('!I', length)
+        print('about to send request:\n', msg)
         self._protocol.tx_data(msg)
         pass
 
@@ -148,8 +159,8 @@ class PeerConnection(object):
         print('rcv_unchoke', msg_length)
         self._peer_choking = False
 
-        # test (16KB request)
-        self.send_request(self.piece_number, self.next_offset * 16384, 16384)
+        # test
+        self.start_piece_download(1)
 
         pass
 
@@ -175,9 +186,6 @@ class PeerConnection(object):
         print(bitfield)
         # self.done.callback(bitfield)
 
-        # test
-        self.send_interested()
-
 
     def rcv_request(self, msg, msg_length):
         print('rcv_request', msg_length)
@@ -190,19 +198,19 @@ class PeerConnection(object):
         print('piece_number =', piece_number, 'offset =', offset)
 
         # append to piece if it is the block we were looking for 
-        if offset == self.next_offset * 16384:
+        if offset == self.next_offset * self.BLOCK_SIZE:
             self.piece_array = self.piece_array + msg[9:]
             self.next_offset = self.next_offset + 1
         else:
-            print('recieved offset', offset, 'wanted offset', self.next_offset * 16384)
+            print('recieved offset', offset, 'wanted offset', self.next_offset * self.BLOCK_SIZE)
 
         # check to see if piece is complete. otherwise request the next piece if we can
         # TODO: handle last pieces (i.e. when there will be a block that is not standard size)
-        if (self.next_offset * 16384) >= self.meta.piece_length():
+        if (self.next_offset * self.BLOCK_SIZE) >= self.meta.piece_length():
             print('piece number', piece_number, 'complete!')
             self.validate_piece(self.piece_array)
         elif self._am_interested and not self._peer_choking:
-            self.send_request(self.piece_number, self.next_offset * 16384, 16384)
+            self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
 
 
     def rcv_cancel(self, msg, msg_length):
