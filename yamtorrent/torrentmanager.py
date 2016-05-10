@@ -11,6 +11,7 @@ from twisted.internet.task import LoopingCall
 from twisted.internet.defer import Deferred
 from twisted.web.client import getPage
 import logging
+from enum import Enum
 
 from . import PeerInfo, TorrentMetadata, PeerConnection, TrackerConnection
 
@@ -21,6 +22,14 @@ logger = logging.getLogger('TorrentManager')
 # manages tracker and peer connections for a single torrent
 class TorrentManager(object):
 
+    class _States(Enum):
+        INITIAL = 0
+        CONNECTING = 1
+        TRACKER = 2
+        DOWNLOADING = 3
+        SEEDING = 4
+        DONE = 5
+
     def __init__(self, meta, port, peer_id):
         self.meta = meta
         self.port = port
@@ -30,7 +39,9 @@ class TorrentManager(object):
         self.next_piece = 0
         self.mybitfield = BitArray(int(self.meta.num_pieces()))
 
-        self.finished_downloading = False
+        self.state = self._States.INITIAL
+
+        # self.finished_downloading = False
 
         # the pieces we desire, in order
         self.desire = list(range(0,int(self.meta.num_pieces())))
@@ -87,6 +98,9 @@ class TorrentManager(object):
             logger.info('Tracker returned %d peers.', len(peers))
             # print(list(map(str, peers)))
             # print(peers[0])
+
+            self.state = self._States.CONNECTING
+
             # connect_to_peer(peers[0])
             # connect_to_peer(peers[1])
             for p in peers:
@@ -115,13 +129,17 @@ class TorrentManager(object):
         # here, we can cancel the request.
 
 
-
-        if self.finished_downloading == False:
+        # if we haven't finished downloading all pieces yet
+        if self.state == self._States.DOWNLOADING:
             idle_peers = self.idle_peers()
 
             # if we've got all the pieces
             if len(self.desire) == 0:
-                self.finished_downloading = True
+
+                # begin seeding
+                self.state == self._States.SEEDING
+
+                # self.finished_downloading = True
                 logger.info('WE HAVE ALL THE PIECES')
                 return
             # if self.next_piece >= self.meta.num_pieces():
@@ -139,6 +157,9 @@ class TorrentManager(object):
                 d = p.start_piece_download(piece_to_request)
                 d.addCallbacks(self.peer_piece_success, self.peer_piece_error)
 
+        if self.state == self._States.SEEDING:
+            pass
+
         # print('has_piece:', self.has_piece(1))
         # print('tick =', self.num_ticks)
 
@@ -155,6 +176,10 @@ class TorrentManager(object):
 
     def peer_did_connect(self, peer):
         logger.info('peer_did_connect %s', str(peer.peer_info))
+
+        # we can now begin downloading
+        self.state = self._States.DOWNLOADING
+
         bitfield = peer.get_bitfield()
         if bitfield is not None:
             self._peers.append(peer)
