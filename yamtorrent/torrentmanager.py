@@ -150,7 +150,7 @@ class TorrentManager(object):
             #     return
 
             # might not be finished, but can't do anything
-            if len(desired) == 0:
+            if len(self.desire) == 0:
                 return
 
 
