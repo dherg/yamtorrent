@@ -50,6 +50,7 @@ class PeerConnection(object):
             print('piece download requested but I\'m being choked...')
             return None # return error?
         # test download
+        self.send_interested()
         self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
 
     def am_choking(self):
@@ -210,7 +211,9 @@ class PeerConnection(object):
             print('piece number', piece_number, 'complete!')
             self.validate_piece(self.piece_array)
         elif self._am_interested and not self._peer_choking:
+            print('about to send again')
             self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
+        
 
 
     def rcv_cancel(self, msg, msg_length):
