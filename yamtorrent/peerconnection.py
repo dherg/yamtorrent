@@ -68,8 +68,8 @@ class PeerConnection(object):
 
     # Once a piece is downloaded, validate it using the hash in torrent file before returning to TorrentManager
     def validate_piece(self):
-        print('validating piece', piece_number)
-        
+        print('validating piece', self.piece_number)
+
         pass
 
     def send_request(self, piece_number, offset, length):
