@@ -7,12 +7,13 @@ import socket
 import os
 from bitstring import BitArray
 from twisted.internet import reactor
+from twisted.internet.task import LoopingCall
 from twisted.internet.defer import Deferred
 from twisted.web.client import getPage
 
 from . import PeerInfo, TorrentMetadata, PeerConnection, TrackerConnection
 
-
+TICK_DELAY = 5
 
 # manages tracker and peer connections for a single torrent
 class TorrentManager(object):
@@ -21,6 +22,7 @@ class TorrentManager(object):
         self.meta = meta
         self.port = port
         self.peer_id = peer_id
+        self.num_ticks = 0
         self.tracker = None  # TrackerConnection
         self.mybitfield = BitArray(int(self.meta.num_pieces()))
 
@@ -80,12 +82,14 @@ class TorrentManager(object):
             print('error', result)
 
         self.tracker.start().addCallbacks(success, error)
+
+        LoopingCall(self.timer_tick).start(TICK_DELAY)
+
         reactor.run()
 
-
-
-
-
+    def timer_tick(self):
+        self.num_ticks += 1
+        # print('tick =', self.num_ticks)
 
 
 # start n connections, query them for bitfield, aggregate bitfields into
