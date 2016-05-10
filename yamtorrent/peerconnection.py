@@ -50,6 +50,8 @@ class PeerConnection(object):
         print('starting download piece', piece_number)
         self.send_interested()
         self.piece_number = piece_number
+        self.next_offset = 0
+        self.piece_array = bytearray()
         if self._peer_choking:
             print('piece download requested but I\'m being choked...')
             return None # return error?
@@ -62,8 +64,8 @@ class PeerConnection(object):
 
     # should callback to TorrentManager
     # called when a piece is complete. the piece is in piece_array
-    def piece_downloaded(self):
-        self.piece_deferreds[self.piece_number].callback((self, self.piece_number, piece_array))
+    def piece_downloaded(self, piece_number, piece_array):
+        self.piece_deferreds[piece_number].callback((self, piece_number, piece_array))
 
     def am_choking(self):
         return self._am_choking
@@ -109,9 +111,10 @@ class PeerConnection(object):
         print('validating piece', self.piece_number)
         thishash = hashlib.sha1(piece_array).digest()
 
-        if thishash == self.meta.piece_hashes()[self.piece_number*self.PIECE_HASH_SIZE:self.PIECE_HASH_SIZE]:
+        start = self.piece_number * self.PIECE_HASH_SIZE
+        if thishash == self.meta.piece_hashes()[start:start + self.PIECE_HASH_SIZE]:
             print('hash matched!')
-            self.piece_downloaded()
+            self.piece_downloaded(self.piece_number, piece_array)
         else:
             print('hash did not match...')
             # restart piece download? disconnect?
@@ -215,10 +218,9 @@ class PeerConnection(object):
         pass
 
     def rcv_piece(self, msg, msg_length):
-        print('rcv_piece', msg_length)
         piece_number = int.from_bytes(msg[1:5], 'big')
         offset = int.from_bytes(msg[5:9], 'big')
-        print('piece_number =', piece_number, 'offset =', offset)
+        print('rcv_piece: id={} off={} len={}'.format(piece_number, offset, msg_length - 1))
 
         # append to piece if it is the block we were looking for
         if offset == self.next_offset * self.BLOCK_SIZE:
@@ -233,7 +235,6 @@ class PeerConnection(object):
             print('piece number', piece_number, 'complete!')
             self.validate_piece(self.piece_array)
         elif self._am_interested and not self._peer_choking:
-            print('about to send again')
             self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
 
 
@@ -284,7 +285,8 @@ class PeerConnection(object):
 
             return data, msg_length
 
-        print('process_buf[unhandled] len=', len(self.buf), 'want=', msg_length, 'type = ', self.buf[4])
+        if self.buf[4] != 7:
+            print('process_buf[unhandled] len=', len(self.buf), 'want=', msg_length, 'type = ', self.buf[4])
         return None, 0
 
     def handle_message(self, msg, msg_length):
