@@ -160,7 +160,7 @@ class PeerConnection(object):
         self._peer_choking = False
 
         # test
-        self.start_piece_download(1)
+        self.start_piece_download(0)
 
         pass
 
