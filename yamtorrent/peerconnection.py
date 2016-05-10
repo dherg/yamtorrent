@@ -7,6 +7,9 @@ from twisted.internet.defer import Deferred
 from twisted.internet.protocol import ClientFactory, Protocol
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from enum import Enum
+import logging
+
+logger = logging.getLogger('PeerConnection')
 
 
 class PeerConnection(object):
@@ -47,13 +50,13 @@ class PeerConnection(object):
     # called by TorrentManager to start download when this connection is unchoked
     def start_piece_download(self, piece_number):
 
-        print('starting download piece', piece_number)
+        logger.info('starting download piece %i', piece_number)
         self.send_interested()
         self.piece_number = piece_number
         self.next_offset = 0
         self.piece_array = bytearray()
         if self._peer_choking:
-            print('piece download requested but I\'m being choked...')
+            logger.warning('piece download requested but I\'m being choked...')
             return None # return error?
 
         # test download
@@ -99,8 +102,7 @@ class PeerConnection(object):
         self.state = self._States.WAIT_HANDSHAKE
 
     def rcv_handshake(self, data):
-        print('rcv_handshake:', data)
-        print(len(data))
+        logger.info('rcv_handshake: len = %d', len(data))
         pass
 
     # NOT USING RIGHT NOW
@@ -113,20 +115,19 @@ class PeerConnection(object):
 
     # Once a piece is downloaded, validate it using the hash in torrent file before returning to TorrentManager
     def validate_piece(self, piece_array):
-        print('validating piece', self.piece_number)
         thishash = hashlib.sha1(piece_array).digest()
 
         start = self.piece_number * self.PIECE_HASH_SIZE
         if thishash == self.meta.piece_hashes()[start:start + self.PIECE_HASH_SIZE]:
-            print('hash matched!')
+            logger.info('validating piece %i: hash matched!', self.piece_number)
             self.piece_downloaded(self.piece_number, piece_array)
         else:
-            print('hash did not match...')
+            logger.info('validating piece %i: hash did not match!', self.piece_number)
             # restart piece download? disconnect?
         pass
 
     def send_request(self, piece_number, offset, length):
-        print('send_request piece', piece_number, 'offset', offset, 'length' , length, 'to', self.peer_info)
+        logger.debug('send_request piece %d  offset=%d  length=%d to %s', piece_number, offset, length, str(self.peer_info))
 
         msg = struct.pack('!IBIII', 13, 6, piece_number, int(offset), length)
         self._protocol.tx_data(msg)
@@ -134,33 +135,33 @@ class PeerConnection(object):
 
 
     def send_keepalive(self):
-        print('send_keepalive to', self.peer_info)
+        logger.info('send_keepalive to %s', str(self.peer_info))
         msg = struct.pack('!I', 0)
         self._protocol.tx_data(msg)
         pass
 
     def send_choke(self):
-        print('send_choke to', self.peer_info)
+        logger.info('send_choke to %s', str(self.peer_info))
         msg = struct.pack('!I', 1) + struct.pack('!B', 0)
         self._protocol.tx_data(msg)
         self._am_choking = True
         pass
 
     def send_unchoke(self):
-        print('send_unchoke to', self.peer_info)
+        logger.info('send_unchoke to %s', str(self.peer_info))
         msg = struct.pack('!I', 1) + struct.pack('!B', 1)
         self._protocol.tx_data(msg)
         self._am_choking = False
         pass
 
     def send_interested(self):
-        print('send_interested to', self.peer_info)
+        logger.info('send_interested to %s', str(self.peer_info))
         msg = struct.pack('!I', 1) + struct.pack('!B', 2)
         self._protocol.tx_data(msg)
         self._am_interested = True
 
     def send_notinterested(self):
-        print('send_notinterested to', self.peer_info)
+        logger.info('send_notinterested to %s', str(self.peer_info))
         msg = struct.pack('!I', 1) + struct.pack('!B', 3)
         self._protocol.tx_data(msg)
         self._am_interested = False
@@ -169,40 +170,40 @@ class PeerConnection(object):
     # self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
 
     def send_cancel(self, piece_number, offset, length):
-        print('send_cancel piece', piece_number, 'offset', offset, 'length' , length, 'to', self.peer_info)
+        logger.info('send_cancel piece %d offset=%d length=%d to %s', piece_number, offset, length, str(self.peer_info))
         msg = struct.pack('!IBIII', 13, 8, piece_number, int(offset), length)
         self._protocol.tx_data(msg)
         pass
 
 
     def rcv_keepalive(self):
-        print('rcv_keepalive')
+        logger.debug('rcv_keepalive')
         # we probably should reset a timer or something
         pass
 
     def rcv_choke(self, msg, msg_length):
-        print('rcv_choke', msg_length)
+        logger.info('rcv_choke %d', msg_length)
         self._peer_choking = True
         pass
 
     def rcv_unchoke(self, msg, msg_length):
-        print('rcv_unchoke', msg_length)
+        logger.info('rcv_unchoke %d', msg_length)
         self._peer_choking = False
 
         pass
 
     def rcv_interested(self, msg, msg_length):
-        print('rcv_interested', msg_length)
+        logger.info('rcv_interested %d', msg_length)
         self._peer_interested = True
         pass
 
     def rcv_notinterested(self, msg, msg_length):
-        print('rcv_notinterested', msg_length)
+        logger.info('rcv_notinterested %d', msg_length)
         self._peer_interested = False
         pass
 
     def rcv_have(self, msg, msg_length):
-        print('rcv_have', msg_length)
+        logger.debug('rcv_have %d', msg_length)
 
         # update bitfield to reflect
         have_id = struct.unpack("!I",msg[1:msg_length])[0]
@@ -232,36 +233,36 @@ class PeerConnection(object):
         self.done.callback(self)
 
     def rcv_request(self, msg, msg_length):
-        print('rcv_request', msg_length)
+        logger.info('rcv_request %d', msg_length)
         pass
 
     def rcv_piece(self, msg, msg_length):
         piece_number = int.from_bytes(msg[1:5], 'big')
         offset = int.from_bytes(msg[5:9], 'big')
-        print('rcv_piece: id={} off={} len={}'.format(piece_number, offset, msg_length - 1))
+        logger.debug('rcv_piece: id={} off={} len={}'.format(piece_number, offset, msg_length - 1))
 
         # append to piece if it is the block we were looking for
         if offset == self.next_offset * self.BLOCK_SIZE:
             self.piece_array = self.piece_array + msg[9:]
             self.next_offset = self.next_offset + 1
         else:
-            print('recieved offset', offset, 'wanted offset', self.next_offset * self.BLOCK_SIZE)
+            logger.debug('recieved offset=%d wanted offset=%d', offset, self.next_offset * self.BLOCK_SIZE)
 
         # check to see if piece is complete. otherwise request the next piece if we can
         # TODO: handle last pieces (i.e. when there will be a block that is not standard size)
         if (self.next_offset * self.BLOCK_SIZE) >= self.meta.piece_length():
-            print('piece number', piece_number, 'complete!')
+            logger.info('piece number %d complete', piece_number)
             self.validate_piece(self.piece_array)
         elif self._am_interested and not self._peer_choking:
             self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
 
 
     def rcv_cancel(self, msg, msg_length):
-        print('rcv_cancel', msg_length)
+        logger.info('rcv_cancel %d', msg_length)
         pass
 
     def rcv_port(self, msg, msg_length):
-        print('rcv_port', msg_length)
+        logger.info('rcv_port %d', msg_length)
         pass
 
     def process_buf(self):
@@ -281,12 +282,12 @@ class PeerConnection(object):
                 data = self.buf[:pstrlen+49]
 
                 self.buf = self.buf[pstrlen+49:]
-                print('handshake match.')
+                logger.debug('handshake match.')
 
                 return data, 0
 
             else:
-                print('PROBABLY SHOULD DROP CONNECTION B/C BAD HANDSHAKE')
+                logger.info('PROBABLY SHOULD DROP CONNECTION B/C BAD HANDSHAKE')
 
         # if we don't even have a length at the start
         if len(self.buf) < 4:
@@ -307,9 +308,9 @@ class PeerConnection(object):
         # can't figure out this line, but it fails if there's not enough left
         try:
             if self.buf[4] != 7:
-                print('process_buf[unhandled] len=', len(self.buf), 'want=', msg_length, 'type = ', self.buf[4])
-        except builtins.IndexError:
-            print('not enough in buffer to check type')
+                logger.debug('process_buf[unhandled] len=%d want=%d type=%d', len(self.buf), msg_length, self.buf[4])
+        except IndexError:
+            logger.warning('not enough in buffer to check type')
 
         return None, 0
 
@@ -334,7 +335,10 @@ class PeerConnection(object):
             9: self.rcv_port
         }
 
-        options[msg_type](msg[4:], msg_length)
+        try:
+            options[msg_type](msg[4:], msg_length)
+        except KeyError:
+            logger.info('received unknown message_id %d', msg_type)
 
     # this is called async by your event loop
     def rx_data(self, data):
@@ -346,7 +350,7 @@ class PeerConnection(object):
         if next_message is not None:
             self.handle_message(next_message, msg_length)
 
-            # check if there are more messages 
+            # check if there are more messages
             self.rx_data(bytearray())
 
         # # parse data here
@@ -364,10 +368,10 @@ class PeerConnection(object):
         self.request_handshake()
 
     def connection_lost(self):
-        print('connection lost!')
+        logger.info('connection lost!')
 
     def connection_failed(self, result):
-        print('failed to connect to peer!')
+        logger.info('failed to connect to peer!')
 
     # Properties
     def get_bitfield(self):

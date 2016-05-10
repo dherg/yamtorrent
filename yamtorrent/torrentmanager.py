@@ -10,10 +10,13 @@ from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 from twisted.internet.defer import Deferred
 from twisted.web.client import getPage
+import logging
 
 from . import PeerInfo, TorrentMetadata, PeerConnection, TrackerConnection
 
 TICK_DELAY = 5
+
+logger = logging.getLogger('TorrentManager')
 
 # manages tracker and peer connections for a single torrent
 class TorrentManager(object):
@@ -50,10 +53,10 @@ class TorrentManager(object):
 
     # create a blank .part file with name coming from torrent metadata
     def create_temp_file(self):
-        print('creating blank file', self.meta.name().decode("utf-8") + '.part') # .part to indicate it is an incomplete file
+        logger.info('creating blank file %s', self.meta.name().decode("utf-8") + '.part') # .part to indicate it is an incomplete file
         self.file = open(self.meta.name().decode("utf-8") + '.part', 'wb+')
 
-    # pick the next piece that we would like to request from a particular peer 
+    # pick the next piece that we would like to request from a particular peer
     def pick_next_piece(self, peer):
 
         # loop through the ordered array of pieces we desire until we get
@@ -73,7 +76,7 @@ class TorrentManager(object):
         self.create_temp_file()
 
         def connect_to_peer(peer_info):
-            print('Connecting to peer:', str(peer_info))
+            logger.info('Connecting to peer: %s', str(peer_info))
             p = PeerConnection(self.meta, peer_info)
             p.connect(reactor).addCallback(self.peer_did_connect)
 
@@ -81,7 +84,7 @@ class TorrentManager(object):
             peers = self.tracker.get_peers()
             # print(peers)
 
-            print('Tracker returned', len(peers), 'peers.')
+            logger.info('Tracker returned %d peers.', len(peers))
             # print(list(map(str, peers)))
             # print(peers[0])
             # connect_to_peer(peers[0])
@@ -90,7 +93,7 @@ class TorrentManager(object):
                 connect_to_peer(p)
 
         def tracker_connect_error(result):
-            print('tracker_connect_error', result)
+            logger.error('tracker_connect_error %s', str(result))
 
         self.tracker.start().addCallbacks(tracker_connect_success,
                                           tracker_connect_error)
@@ -107,7 +110,7 @@ class TorrentManager(object):
         # could use num_ticks as a timer for timing out requests
         # would simply require us to pass the peerconnection the
         # value of num_ticks at the time of initiation
-        # and if any time timer_tick is called, and the value of the peer 
+        # and if any time timer_tick is called, and the value of the peer
         # connection is greater than x ticks from the values of num_ticks
         # here, we can cancel the request.
 
@@ -119,8 +122,8 @@ class TorrentManager(object):
             # if we've got all the pieces
             if len(self.desire) == 0:
                 self.finished_downloading = True
-                print('WE HAVE ALL THE PIECES')
-                return 
+                logger.info('WE HAVE ALL THE PIECES')
+                return
             # if self.next_piece >= self.meta.num_pieces():
             #     return
 
@@ -151,19 +154,18 @@ class TorrentManager(object):
     ######## PEER CALLBACKS  #################
 
     def peer_did_connect(self, peer):
-        print('peer_did_connect', str(peer.peer_info))
+        logger.info('peer_did_connect %s', str(peer.peer_info))
         bitfield = peer.get_bitfield()
         if bitfield is not None:
             self._peers.append(peer)
             # do something else here?
         else:
             peer.stop()
-        print(bitfield)
+        logger.debug(bitfield)
 
     def peer_piece_success(self, result):
         (peer, piece_id, piece_array) = result
-        print('peer_received_piece', str(peer.peer_info))
-        print(piece_id)
+        logger.info('received_piece %d from %s.', piece_id, str(peer.peer_info))
 
         #if we already had this piece, don't bother
         if self.mybitfield[piece_id] == 1:
@@ -171,10 +173,10 @@ class TorrentManager(object):
 
 
         #write this piece to file
-        self.write_piece_to_file(piece_id, piece_array)   
+        self.write_piece_to_file(piece_id, piece_array)
 
         # add to availability table to show that we have downloaded this piece
-        self.mybitfield[piece_id] = 1     
+        self.mybitfield[piece_id] = 1
 
         # TODO this is not correct
         # self.next_piece = piece_id + 1

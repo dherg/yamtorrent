@@ -12,6 +12,10 @@ from twisted.web.client import getPage
 
 from yamtorrent import PeerInfo, TorrentMetadata, PeerConnection, TrackerConnection, TorrentManager
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
 def DEBUG(*s):
     if debugging:
         print(*s)
