@@ -27,6 +27,8 @@ class TorrentManager(object):
         self.next_piece = 0
         self.mybitfield = BitArray(int(self.meta.num_pieces()))
 
+        self.finished_downloading = False
+
         # the pieces we desire, in order
         self.desire = list(range(0,int(self.meta.num_pieces())))
 
@@ -100,26 +102,38 @@ class TorrentManager(object):
     def timer_tick(self):
         self.num_ticks += 1
 
+        
 
-        idle_peers = self.idle_peers()
+        # could use num_ticks as a timer for timing out requests
+        # would simply require us to pass the peerconnection the
+        # value of num_ticks at the time of initiation
+        # and if any time timer_tick is called, and the value of the peer 
+        # connection is greater than x ticks from the values of num_ticks
+        # here, we can cancel the request.
 
-        # if we've got all the pieces
-        if len(self.desire) == 0:
-            return 
-        # if self.next_piece >= self.meta.num_pieces():
-        #     return
 
-        # figure out which peers we can be using
-        unchoked = filter(lambda p: not p.peer_choking(), idle_peers)
-        for p in unchoked:
 
-            # self.requests[self.next_piece] = p
-            # d = p.start_piece_download(self.next_piece)
+        if self.finished_downloading == False:
+            idle_peers = self.idle_peers()
 
-            piece_to_request = self.pick_next_piece(p)
-            self.requests[piece_to_request] = p
-            d = p.start_piece_download(piece_to_request)
-            d.addCallbacks(self.peer_piece_success, self.peer_piece_error)
+            # if we've got all the pieces
+            if len(self.desire) == 0:
+                self.finished_downloading = True
+                return 
+            # if self.next_piece >= self.meta.num_pieces():
+            #     return
+
+            # figure out which peers we can be using
+            unchoked = filter(lambda p: not p.peer_choking(), idle_peers)
+            for p in unchoked:
+
+                # self.requests[self.next_piece] = p
+                # d = p.start_piece_download(self.next_piece)
+
+                piece_to_request = self.pick_next_piece(p)
+                self.requests[piece_to_request] = p
+                d = p.start_piece_download(piece_to_request)
+                d.addCallbacks(self.peer_piece_success, self.peer_piece_error)
 
         # print('has_piece:', self.has_piece(1))
         # print('tick =', self.num_ticks)
@@ -149,6 +163,9 @@ class TorrentManager(object):
         (peer, piece_id, piece_array) = result
         print('peer_received_piece', str(peer.peer_info))
         print(piece_id)
+
+        if self.mybitfield[piece_id] == 1:
+            return
 
 
         #write this piece to file

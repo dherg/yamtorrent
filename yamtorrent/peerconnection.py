@@ -166,6 +166,14 @@ class PeerConnection(object):
         self._am_interested = False
         pass
 
+    # self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
+
+    def send_cancel(self, piece_number, offset, length):
+        print('send_cancel piece', piece_number, 'offset', offset, 'length' , length, 'to', self.peer_info)
+        msg = struct.pack('!IBIII', 13, 8, piece_number, int(offset), length)
+        self._protocol.tx_data(msg)
+        pass
+
 
     def rcv_keepalive(self):
         print('rcv_keepalive')
