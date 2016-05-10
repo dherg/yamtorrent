@@ -115,7 +115,12 @@ class TorrentManager(object):
         print('peer_received_piece', str(peer.peer_info))
         print(piece_id)
 
+
+        #write this piece to file
         self.write_piece_to_file(piece_id, piece_array)
+
+        #note that we received this piece
+        self.mybitfield[piece_id] = 1
 
         # TODO this is not correct
         self.next_piece = piece_id + 1
