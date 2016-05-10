@@ -14,15 +14,22 @@ class TorrentMetadata(object):
 
         with open(filename, 'rb') as torrentfile:
             self._metadata = bencodepy.decode(torrentfile.read())
+            
 
             try:
                 # re-bencode the info section
                 info = self._metadata[b"info"]
 
+                # piece hash values
+                self._piece_hashes = info[b'pieces']
+
+
                 # SHA1 hash of info section
                 self._info_hash = hashlib.sha1(bencodepy.encode(info)).digest()
                 self._name = info[b'name']
                 self._announce = self._metadata[b'announce']
+
+
 
                 if b'length' in info:
                     # torrent only has one file
@@ -59,3 +66,6 @@ class TorrentMetadata(object):
 
     def piece_length(self):
         return self._piece_length
+
+    def piece_hashes(self):
+        return self._piece_hashes

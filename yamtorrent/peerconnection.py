@@ -1,5 +1,6 @@
 import sys
 import struct
+import hashlib
 from bitstring import BitArray
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
@@ -9,6 +10,8 @@ from enum import Enum
 
 
 class PeerConnection(object):
+
+    PIECE_HASH_SIZE = 20
 
     class _States(Enum):
         WAIT_CONNECT = 0
@@ -25,10 +28,10 @@ class PeerConnection(object):
 
         # need to keep track of choking/interested state for self and peer
         # connections start out as choking and not interested
-        self.am_choking = True
-        self.am_interested = False
-        self.peer_choking = True
-        self.peer_interested = False
+        self._am_choking = True
+        self._am_interested = False
+        self._peer_choking = True
+        self._peer_interested = False
 
         # storing the blocks of the piece we're working on until we get a full piece to
         # return to TorrentManager (or should we return every block on reciept and have
@@ -38,6 +41,17 @@ class PeerConnection(object):
         self.next_offset = 0
         self.piece_array = bytearray()
         
+    def am_choking(self):
+        return self._am_choking
+
+    def am_interested(self):
+        return self._am_interested
+
+    def peer_choking(self):
+        return self._peer_choking
+
+    def peer_interested(self):
+        return self._peer_interested
 
 
     def connect(self, reactor):
@@ -67,9 +81,16 @@ class PeerConnection(object):
         # self.state = self._States.WAIT_BITFIELD
 
     # Once a piece is downloaded, validate it using the hash in torrent file before returning to TorrentManager
-    def validate_piece(self):
+    def validate_piece(self, piece_array):
         print('validating piece', self.piece_number)
+        thishash = hashlib.sha1(piece_array).digest()
 
+        if thishash == self.meta.piece_hashes()[self.piece_number*self.PIECE_HASH_SIZE:self.PIECE_HASH_SIZE]:
+            print('hash matched!')
+            # should somehow pass piece to TorrentManager here
+        else:
+            print('hash did not match...')
+            # restart piece download? disconnect?
         pass
 
     def send_request(self, piece_number, offset, length):
@@ -89,27 +110,27 @@ class PeerConnection(object):
         print('send_choke to', self.peer_info)
         msg = struct.pack('!I', 1) + struct.pack('!B', 0)
         self._protocol.tx_data(msg)
-        self.am_choking = True
+        self._am_choking = True
         pass
 
     def send_unchoke(self):
         print('send_unchoke to', self.peer_info)
         msg = struct.pack('!I', 1) + struct.pack('!B', 1)
         self._protocol.tx_data(msg)
-        self.am_choking = False
+        self._am_choking = False
         pass
 
     def send_interested(self):
         print('send_interested to', self.peer_info)
         msg = struct.pack('!I', 1) + struct.pack('!B', 2)
         self._protocol.tx_data(msg)
-        self.am_interested = True
+        self._am_interested = True
 
     def send_notinterested(self):
         print('send_notinterested to', self.peer_info)
         msg = struct.pack('!I', 1) + struct.pack('!B', 3)
         self._protocol.tx_data(msg)
-        self.am_interested = False
+        self._am_interested = False
         pass
 
 
@@ -120,12 +141,12 @@ class PeerConnection(object):
 
     def rcv_choke(self, msg, msg_length):
         print('rcv_choke', msg_length)
-        self.peer_choking = True
+        self._peer_choking = True
         pass
 
     def rcv_unchoke(self, msg, msg_length):
         print('rcv_unchoke', msg_length)
-        self.peer_choking = False
+        self._peer_choking = False
 
         # test (16KB request)
         self.send_request(self.piece_number, self.next_offset * 16384, 16384)
@@ -134,12 +155,12 @@ class PeerConnection(object):
 
     def rcv_interested(self, msg, msg_length):
         print('rcv_interested', msg_length)
-        self.peer_interested = True
+        self._peer_interested = True
         pass
 
     def rcv_notinterested(self, msg, msg_length):
         print('rcv_notinterested', msg_length)
-        self.peer_interested = False
+        self._peer_interested = False
         pass
 
     def rcv_have(self, msg, msg_length):
@@ -179,8 +200,8 @@ class PeerConnection(object):
         # TODO: handle last pieces (i.e. when there will be a block that is not standard size)
         if (self.next_offset * 16384) >= self.meta.piece_length():
             print('piece number', piece_number, 'complete!')
-            self.validate_piece()
-        elif self.am_interested and not self.peer_choking:
+            self.validate_piece(self.piece_array)
+        elif self._am_interested and not self._peer_choking:
             self.send_request(self.piece_number, self.next_offset * 16384, 16384)
 
 
