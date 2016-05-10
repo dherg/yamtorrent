@@ -41,7 +41,7 @@ class TorrentMetadata(object):
                     self._files = [(f[b'path'], f[b'length']) for f in info[b'files']]
                     self._length = sum([l for (p, l) in self._files])
 
-                self._num_pieces = len(info[b'pieces'])/self.PIECE_HASH_SIZE
+                self._num_pieces = int(len(info[b'pieces'])/self.PIECE_HASH_SIZE)
                 self._piece_length = info[b'piece length']
             except KeyError:
                 raise ValueError('Invalid Torrent File: Missing a field!')

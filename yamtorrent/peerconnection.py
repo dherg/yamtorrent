@@ -25,6 +25,7 @@ class PeerConnection(object):
         self.bitfield = None
         self.state = self._States.WAIT_CONNECT
         self._protocol = protocol
+        self._bitfield = None
         self.buf = bytearray()
 
         # need to keep track of choking/interested state for self and peer
@@ -69,10 +70,10 @@ class PeerConnection(object):
         self.done = Deferred()
         d = (TCP4ClientEndpoint(reactor, self.peer_info.ip, self.peer_info.port)
              .connect(ProtocolAdapterFactory(self)))
-        # d.addErrback(self.connection_failed)
+        d.addErrback(lambda res: self.connection_failed(res))
         self.state = self._States.WAIT_CONNECT
 
-        return d
+        return self.done
 
     def request_handshake(self):
         msg = struct.pack('!B', 19) + b"BitTorrent protocol" + bytearray(8) + self.meta.info_hash() + self.meta.peer_id
@@ -182,10 +183,8 @@ class PeerConnection(object):
     def rcv_bitfield(self, msg, msg_length):
         # parse bitfield
         # store bitfield locally
-        print('rcv_bitfield:', msg_length-1)
-        bitfield = BitArray(bytes=msg[1:msg_length-1])
-        print(bitfield)
-        # self.done.callback(bitfield)
+        self._bitfield = BitArray(bytes=msg[1:msg_length])
+        self.done.callback(self)
 
 
     def rcv_request(self, msg, msg_length):
@@ -316,6 +315,12 @@ class PeerConnection(object):
     def connection_lost(self):
         print('connection lost!')
 
+    def connection_failed(self, result):
+        print('failed to connect to peer!')
+
+    # Properties
+    def get_bitfield(self):
+        return self._bitfield
 
 class ProtocolAdapter(Protocol):
 

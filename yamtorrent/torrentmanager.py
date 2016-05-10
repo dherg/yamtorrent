@@ -5,6 +5,7 @@ import bencodepy
 import struct
 import socket
 import os
+from bitstring import BitArray
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
 from twisted.web.client import getPage
@@ -20,15 +21,35 @@ class TorrentManager(object):
         self.meta = meta
         self.port = port
         self.peer_id = peer_id
-        self.tracker = None # TrackerConnection
-        self.mybitfield = [0] * int(self.meta.num_pieces()) # my bitfield is a list of num_pieces nums with 0 if need and 1 if have
-        self.availability = [0] * int(self.meta.num_pieces()) # availability: 0 if no known peers with, or PeerConnection of peer with (?)
-        self.file = None # file that we will write downloaded data to.
+        self.tracker = None  # TrackerConnection
+        self.mybitfield = BitArray(int(self.meta.num_pieces()))
+
+        # dict that maps PeerConnection to its bitfield
+        self.bitfields = {}
+
+        # dict mapping piece_id to list of PeerConnections with piece
+        # self.availability = [0] * int(self.meta.num_pieces())  # availability: 0 if no known peers with, or PeerConnection of peer with (?)
+
+        # dict mapping peer to Boolean connection state
+        self._peers = []
+        # file that we will write downloaded data to.
+        self.file = None
 
     # create a blank .part file with name coming from torrent metadata
     def create_temp_file(self):
         print('creating blank file', self.meta.name().decode("utf-8") + '.part') # .part to indicate it is an incomplete file
         self.file = open(self.meta.name().decode("utf-8") + '.part', 'wb+')
+
+    def validate_bitfield(self, bitfield):
+        num_pieces = self.meta.num_pieces()
+        length = len(bitfield)
+        print('num_pieces', num_pieces)
+        print('length', length)
+        if (length < num_pieces or
+            (length > num_pieces and
+             any(bitfield[num_pieces:length]))):
+            return False
+        return True
 
 
     def start(self):
@@ -36,10 +57,24 @@ class TorrentManager(object):
 
         self.create_temp_file()
 
+        def peer_did_connect(peer):
+            print('peer_did_connect')
+            bitfield = peer.get_bitfield()
+            if bitfield is not None and self.validate_bitfield(bitfield):
+                self.bitfields[peer] = bitfield
+                print('valid bitfield')
+                if peer not in self._peers:
+                    self._peers.append(peer)
+            else:
+                # remove peer
+                print('invalid bitfield')
+                peer.stop()
+            print(bitfield)
+
         def connect_to_peer(peer_info):
             print('Connecting to peer:', str(peer_info))
-            first_peer = PeerConnection(self.meta, peer_info)
-            first_peer.connect(reactor)
+            p = PeerConnection(self.meta, peer_info)
+            p.connect(reactor).addCallback(peer_did_connect)
 
         def success(result):
             peers = self.tracker.get_peers()
