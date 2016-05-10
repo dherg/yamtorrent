@@ -23,8 +23,9 @@ class TorrentManager(object):
         self.tracker = None # TrackerConnection
         self.mybitfield = [0] * int(self.meta.num_pieces()) # my bitfield is a list of num_pieces nums with 0 if need and 1 if have
         self.availability = [0] * int(self.meta.num_pieces()) # availability: 0 if no known peers with, or PeerConnection of peer with (?)
-        self.file = None # file that we will write downloaded data to. get filename from metadata
+        self.file = None # file that we will write downloaded data to.
 
+    # create a blank .part file with name coming from torrent metadata
     def create_temp_file(self):
         print('creating blank file', self.meta.name().decode("utf-8") + '.part') # .part to indicate it is an incomplete file
         self.file = open(self.meta.name().decode("utf-8") + '.part', 'wb+')

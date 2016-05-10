@@ -30,6 +30,15 @@ class PeerConnection(object):
         self.peer_choking = True
         self.peer_interested = False
 
+        # storing the blocks of the piece we're working on until we get a full piece to
+        # return to TorrentManager (or should we return every block on reciept and have
+        # TorrentManager keep track of blocks in addition to pieces?)
+        # In this model the blocks of a piece are downloaded in order (0 to piece length/16384)
+        self.piece_number = 0
+        self.next_offset = 0
+        self.piece_array = bytearray()
+        
+
 
     def connect(self, reactor):
         self.done = Deferred()
@@ -56,6 +65,12 @@ class PeerConnection(object):
         msg = bytearray(2)
         # self.transport.write(msg)
         # self.state = self._States.WAIT_BITFIELD
+
+    # Once a piece is downloaded, validate it using the hash in torrent file before returning to TorrentManager
+    def validate_piece(self):
+        print('validating piece', piece_number)
+        
+        pass
 
     def send_request(self, piece_number, offset, length):
         print('send_request piece', piece_number, 'offset', offset, 'length' , length, 'to', self.peer_info)
@@ -113,7 +128,7 @@ class PeerConnection(object):
         self.peer_choking = False
 
         # test (16KB request)
-        self.send_request(0, 0, 16384)
+        self.send_request(self.piece_number, self.next_offset * 16384, 16384)
 
         pass
 
@@ -149,8 +164,25 @@ class PeerConnection(object):
 
     def rcv_piece(self, msg, msg_length):
         print('rcv_piece', msg_length)
-        print(msg)
-        pass
+        piece_number = int.from_bytes(msg[1:5], 'big')
+        offset = int.from_bytes(msg[5:9], 'big')
+        print('piece_number =', piece_number, 'offset =', offset)
+
+        # append to piece if it is the block we were looking for 
+        if offset == self.next_offset * 16384:
+            self.piece_array = self.piece_array + msg[9:]
+            self.next_offset = self.next_offset + 1
+        else:
+            print('recieved offset', offset, 'wanted offset', self.next_offset * 16384)
+
+        # check to see if piece is complete. otherwise request the next piece if we can
+        # TODO: handle last pieces (i.e. when there will be a block that is not standard size)
+        if (self.next_offset * 16384) >= self.meta.piece_length():
+            print('piece number', piece_number, 'complete!')
+            self.validate_piece()
+        elif self.am_interested and not self.peer_choking:
+            self.send_request(self.piece_number, self.next_offset * 16384, 16384)
+
 
     def rcv_cancel(self, msg, msg_length):
         print('rcv_cancel', msg_length)
