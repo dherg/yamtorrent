@@ -197,7 +197,7 @@ class PeerConnection(object):
         print('rcv_have', msg_length)
 
         # update bitfield to reflect
-        have_id = struct.unpack("!I",msg[1:msg_length])
+        have_id = struct.unpack("!I",msg[1:msg_length])[0]
         self._bitfield[have_id] = 1
 
         pass
@@ -295,8 +295,14 @@ class PeerConnection(object):
 
             return data, msg_length
 
-        if self.buf[4] != 7:
-            print('process_buf[unhandled] len=', len(self.buf), 'want=', msg_length, 'type = ', self.buf[4])
+
+        # can't figure out this line, but it fails if there's not enough left
+        try:
+            if self.buf[4] != 7:
+                print('process_buf[unhandled] len=', len(self.buf), 'want=', msg_length, 'type = ', self.buf[4])
+        except builtins.IndexError:
+            print('not enough in buffer to check type')
+
         return None, 0
 
     def handle_message(self, msg, msg_length):
@@ -331,6 +337,9 @@ class PeerConnection(object):
 
         if next_message is not None:
             self.handle_message(next_message, msg_length)
+
+            # check if there are more messages 
+            self.rx_data(bytearray())
 
         # # parse data here
         # if self.state == self._States.WAIT_HANDSHAKE:

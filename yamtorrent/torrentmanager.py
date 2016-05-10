@@ -77,10 +77,15 @@ class TorrentManager(object):
 
         def tracker_connect_success(result):
             peers = self.tracker.get_peers()
+            # print(peers)
+
             print('Tracker returned', len(peers), 'peers.')
             # print(list(map(str, peers)))
-            print(peers[0])
-            connect_to_peer(peers[0])
+            # print(peers[0])
+            # connect_to_peer(peers[0])
+            # connect_to_peer(peers[1])
+            for p in peers:
+                connect_to_peer(p)
 
         def tracker_connect_error(result):
             print('tracker_connect_error', result)
