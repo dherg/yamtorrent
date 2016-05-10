@@ -107,6 +107,29 @@ Particular Design Choices We Made
 
 --Download pieces in order
 
++--------------+
+| Dependencies |
++--------------+
+
+We used the following modules:
+
+sys
+requests
+hashlib
+bencodepy
+struct
+socket
+os
+bitstring
+twisted
+enum
+urllib
+glob
+
+Most of these should be available through any standard distribution,
+and any that are not (e.g. twisted, bencodepy, etc.) are available
+via pip.
+
 +-----------------------+
 | POSSIBLE IMPROVEMENTS |
 +-----------------------+
