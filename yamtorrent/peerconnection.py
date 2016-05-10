@@ -62,6 +62,11 @@ class PeerConnection(object):
         self.piece_deferreds[piece_number] = d
         return d
 
+    # returns whether the piece is in our bitfield
+    def piece_in_bitfield(self, piece_number):
+        return self._bitfield[piece_number]
+
+
     # should callback to TorrentManager
     # called when a piece is complete. the piece is in piece_array
     def piece_downloaded(self, piece_number, piece_array):

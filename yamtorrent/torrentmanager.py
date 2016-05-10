@@ -27,6 +27,9 @@ class TorrentManager(object):
         self.next_piece = 0
         self.mybitfield = BitArray(int(self.meta.num_pieces()))
 
+        # the pieces we desire, in order
+        self.desire = list(range(0,int(self.meta.num_pieces())))
+
         # dict mapping piece_id to a PeerConnection
         self.requests = {}
 
@@ -47,6 +50,20 @@ class TorrentManager(object):
     def create_temp_file(self):
         print('creating blank file', self.meta.name().decode("utf-8") + '.part') # .part to indicate it is an incomplete file
         self.file = open(self.meta.name().decode("utf-8") + '.part', 'wb+')
+
+    # pick the next piece that we would like to request from a particular peer 
+    def pick_next_piece(self, peer):
+
+        # loop through the ordered array of pieces we desire until we get
+        # to one that this peer has, then return that one, and note that we no longer
+        # desire it
+        for d in self.desire:
+            if peer.piece_in_bitfield(d):
+                self.desire.remove(d)
+                return d
+
+        # if we there are no pieces we desire that this peer has
+        return None
 
     def start(self):
         self.tracker = TrackerConnection(self.meta, self.port, self.peer_id)
@@ -78,15 +95,27 @@ class TorrentManager(object):
     def timer_tick(self):
         self.num_ticks += 1
 
-        idle_peers = self.idle_peers()
-        if self.next_piece >= self.meta.num_pieces():
-            return
 
+        idle_peers = self.idle_peers()
+
+        # if we've got all the pieces
+        if len(self.desire) == 0:
+            return 
+        # if self.next_piece >= self.meta.num_pieces():
+        #     return
+
+        # figure out which peers we can be using
         unchoked = filter(lambda p: not p.peer_choking(), idle_peers)
         for p in unchoked:
-            self.requests[self.next_piece] = p
-            d = p.start_piece_download(self.next_piece)
+
+            # self.requests[self.next_piece] = p
+            # d = p.start_piece_download(self.next_piece)
+
+            piece_to_request = self.pick_next_piece(p)
+            self.requests[piece_to_request] = p
+            d = p.start_piece_download(piece_to_request)
             d.addCallbacks(self.peer_piece_success, self.peer_piece_error)
+
         # print('has_piece:', self.has_piece(1))
         # print('tick =', self.num_ticks)
 
@@ -124,9 +153,10 @@ class TorrentManager(object):
         self.mybitfield[piece_id] = 1     
 
         # TODO this is not correct
-        self.next_piece = piece_id + 1
+        # self.next_piece = piece_id + 1
 
-        
+
+
 
         self.requests.pop(piece_id, None)
 
