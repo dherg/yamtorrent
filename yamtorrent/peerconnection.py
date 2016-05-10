@@ -39,20 +39,20 @@ class PeerConnection(object):
         # return to TorrentManager (or should we return every block on reciept and have
         # TorrentManager keep track of blocks in addition to pieces?)
         # In this model the blocks of a piece are downloaded in order (0 to piece length/BLOCK_SIZE)
-        self.piece_number = 1
+        self.piece_number = 0
         self.next_offset = 0
         self.piece_array = bytearray()
 
     # called by TorrentManager to start download when this connection is unchoked
     def start_piece_download(self, piece_number):
         print('starting download piece', piece_number)
+        self.send_interested()
         self.piece_number = piece_number
         if self._peer_choking:
             print('piece download requested but I\'m being choked...')
             return None # return error?
 
         # test download
-        self.send_interested()
         self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
 
     # should callback to TorrentManager
@@ -115,7 +115,6 @@ class PeerConnection(object):
     def send_request(self, piece_number, offset, length):
         print('send_request piece', piece_number, 'offset', offset, 'length' , length, 'to', self.peer_info)
         msg = struct.pack('!I', 13) + struct.pack('!B', 6) + struct.pack('!I', piece_number) + struct.pack('!I', int(offset)) + struct.pack('!I', length)
-        print('about to send request:\n', msg)
         self._protocol.tx_data(msg)
         pass
 

@@ -35,6 +35,13 @@ class TorrentManager(object):
         # file that we will write downloaded data to.
         self.file = None
 
+    # takes a bytearray (piece_array) and writes it to the correct
+    # position in file (piece_number * piece_length)
+    # piece_length is given in torrent metadata
+    def write_piece_to_file(self, piece_number, piece_array):
+        self.file.seek(piece_number * self.meta.piece_length())
+        self.file.write(piece_array)
+
     # create a blank .part file with name coming from torrent metadata
     def create_temp_file(self):
         print('creating blank file', self.meta.name().decode("utf-8") + '.part') # .part to indicate it is an incomplete file
@@ -53,6 +60,7 @@ class TorrentManager(object):
                     self._peers.append(peer)
                 # do something else here?
             else:
+                print('stopping peer')
                 peer.stop()
             print(bitfield)
 
