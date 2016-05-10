@@ -1,0 +1,47 @@
+YAMTORRENT - Python BitTorrent Client
+CPSC 433: Computer Networks Final Project
+by: David Hergenroeder (david.hergenroeder@yale.edu)
+    Micah Rosales (micah.rosales@yale.edu)
+    Lincoln Swaine-Moore (lincoln.swaine-moore@yale.edu)
+
++------------+
+| BACKGROUND |
++------------+
+
+Background on the BitTorrent Protocol
+
+        BitTorrent is a peer-to-peer Internet file sharing protocol 
+    that was designed by Bram Cohen in 2001. It has enjoyed widespread
+    success and adoption and is currently one of the most common 
+    protocols for peer-to-peer transfer of large files.
+
+        A BitTorrent downloads a file by joining a "swarm" of hosts
+    that are downloading and uploading the file simultaneously. This
+    is advantageous over other traditional client/server file transfer
+    protocols, especially for large files that are downloaded many
+    times, because it more efficiently distributes the work of 
+    uploading.
+
+
+
+
+
++---------------------+
+| YAMTORRENT OVERVIEW |
++---------------------+
+
+An Overview of our BitTorrent Client 
+
+
++----------------+
+| DESIGN CHOICES |
++----------------+
+
+Particular Design Choices We Made
+
++-----------------------+
+| POSSIBLE IMPROVEMENTS |
++-----------------------+
+
+Areas for Future Improvement / Possible Future Features
+
