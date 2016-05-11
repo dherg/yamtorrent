@@ -18,11 +18,13 @@ def main():
     port = b'6881'
     peer_id = b'-YT0001-' + os.urandom(12)
     meta_info = None
+    logger = logging.getLogger('YamTorrent')
     try:
         filename = sys.argv[1] if len(sys.argv) > 0 else None
         meta_info = TorrentMetadata(filename, peer_id)
     except FileNotFoundError:
-        ERROR('INVALID FILE NAME: ' + filename)
+        logger.error('INVALID FILE NAME: ' + filename)
+        sys.exit(0)
 
     torrent = TorrentManager(meta_info, port, peer_id)
     torrent.start()

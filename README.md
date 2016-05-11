@@ -15,3 +15,6 @@ Or try `pip install -r requirements.txt`
  `python YamTorrent.py [file.torrent] [--progress|--verbose]`
  
  For an example torrent file, try [The Latest Ubuntu Release](http://releases.ubuntu.com/16.04/ubuntu-16.04-server-amd64.iso.torrent)
+
+### Report
+Read the report for more details
