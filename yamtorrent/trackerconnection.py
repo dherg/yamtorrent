@@ -5,7 +5,6 @@ import socket
 import sys
 from urllib.parse import urlencode
 from urllib.parse import urlparse
-from udptrack import UDPTracker
 from twisted.internet.defer import Deferred
 from twisted.web.client import getPage
 from . import PeerInfo
