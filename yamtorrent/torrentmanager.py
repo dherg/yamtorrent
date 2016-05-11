@@ -6,7 +6,7 @@ import struct
 import socket
 import os
 from bitstring import BitArray
-from twisted.internet import reactor
+from twisted.internet import reactor as treactor
 from twisted.internet.task import LoopingCall
 from twisted.internet.defer import Deferred
 from twisted.web.client import getPage
@@ -24,7 +24,7 @@ logger = logging.getLogger('TorrentManager')
 class TorrentManager(object):
 
     class _States(Enum):
-        INITIAL = 0        
+        INITIAL = 0
         TRACKER = 1
         CONNECTING = 2
         DOWNLOADING = 3
@@ -32,7 +32,7 @@ class TorrentManager(object):
         DONE = 5
         IDLE = 6
 
-    def __init__(self, meta, port, peer_id):
+    def __init__(self, meta, port, peer_id, reactor=None):
         self.meta = meta
         self.port = port
         self.peer_id = peer_id
@@ -40,6 +40,7 @@ class TorrentManager(object):
         self.tracker = None  # TrackerConnection
         self.next_piece = 0
         self.mybitfield = BitArray(int(self.meta.num_pieces()))
+        self._reactor = reactor if reactor else treactor
 
         self.state = self._States.INITIAL
 
@@ -102,14 +103,14 @@ class TorrentManager(object):
         return None
 
     def start(self):
-        self.tracker = TrackerConnection(self.meta, self.port, self.peer_id)
+        self.tracker = TrackerConnection(self.meta, self.port, self.peer_id, self._reactor)
 
         self.create_temp_file()
 
         def connect_to_peer(peer_info):
             logger.info('Connecting to peer: %s', str(peer_info))
             p = PeerConnection(self.meta, peer_info)
-            p.connect(reactor).addCallback(self.peer_did_connect)
+            p.connect(self._reactor).addCallback(self.peer_did_connect)
 
         def tracker_connect_success(result):
             peers = self.tracker.get_peers()
@@ -134,7 +135,7 @@ class TorrentManager(object):
 
         LoopingCall(self.timer_tick).start(TICK_DELAY)
 
-        reactor.run()
+        self._reactor.run()
 
     def timer_tick(self):
         self.num_ticks += 1
