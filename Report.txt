@@ -4,6 +4,11 @@ by: David Hergenroeder (david.hergenroeder@yale.edu)
     Micah Rosales (micah.rosales@yale.edu)
     Lincoln Swaine-Moore (lincoln.swaine-moore@yale.edu)
 
+
+N.B. All the code/READMEs/etc. is stored in a GitHub repo at
+https://github.com/dherg/yamtorrent
+
+
 +------------+
 | BACKGROUND |
 +------------+
@@ -107,7 +112,8 @@ Twisted
 recommendation of a blog post, we found this library, which enables 
 relatively easy asynchronous programming in Python. We used the 
 twisted to enable multiple peer connections to be operating independently
-and at their own pace, without opening multiple threads. Twisted permits
+and at their own pace, without opening multiple threads. Twisted permits 
+functions to be called when messages and received, and helps facilitate
 callbacks that enable the TorrentManager to be notified when important 
 events occur at the PeerConnection level, such as a bitfield is received
 or a piece finishes downloading.
@@ -120,11 +126,20 @@ until the entirety of its length has arrived. To managed this aspect, we
 employed a buffer that was simply a bytearray. Whenever a new message
 arrives from a peer, it is appended to the buffer, and the front of the 
 buffer is checked to see the length of the first message that was in there.
-If the whole is present, the PeerConnectoin processes that message as is
+If the whole is present, the PeerConnection processes that message as is
 appropriate to its type, and checks to see if there are any more complete 
 messages in the buffer. The buffer thus offers the PeerConnection a
 simulation of the messages arriving as complete and distinct entities, 
 when in reality, they are split piecemeal across many packets.
+
+Ticks
+
+	TorrentManager uses LoopingCall to call the function timer_tick every
+TICK_DELAY (global variable, currently set to 5) seconds. This enables the
+TorrenManager to do actions regularly. These include scanning the list of 
+idle peers to assign them pieces to request, and scanning the list of busy 
+peers to check for timeouts. The TorrentManager also manages a variable 
+called num_ticks that it increments every tick.
 
 Download pieces in order
 
@@ -138,6 +153,22 @@ have every piece, and so the downloading may occur slightly out of order,
 having the desired order be linear with the actual order is both simple
 and useful. In the event of say, streaming, it is useful to have earlier 
 pieces arrive earlier, so the file can be played faster.
+
+Timeout
+	
+	Some peers are remarkably slow. To deal with this issue, we have 
+implemented a means of timing a piece request. When a peer is told to 
+start requesting a piece, it stores the TorrentManager's current value 
+of num_ticks. Thereafter, when TorrentManager loops through all the busy
+peers, it compares their value of the starting tick time to the current
+value of num_ticks. If they are more than TIMEOUT (global variable 
+currently set to 120) seconds apart (calculated by multiplying the 
+difference between the tick counts by TICK_DELAY and comparing that 
+to TIMEOUT), sthe TorrentManager calls the PeerConnection's method 
+cancel_current_download, which handles sending a cancel, and resetting
+its state to be ready to start sending a different piece.
+
+
 
 +--------------+
 | Dependencies |
