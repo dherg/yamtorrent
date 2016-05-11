@@ -55,6 +55,12 @@ class PeerConnection(object):
         self.piece_array = bytearray()
         self.start_tick = 0
 
+        # vars for the last piece and block
+        self.last_piece_size = 0
+        self.last_block_size = 0
+        self.last_block_number = 0
+        self.last_piece_offset = 0
+
     # called by TorrentManager to start download when this connection is unchoked
     def start_piece_download(self, piece_number, start_tick):
 
@@ -72,11 +78,48 @@ class PeerConnection(object):
             logger.warning('piece download requested but I\'m being choked...')
             return None # return error?
 
-        # test download
-        self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
-        d = Deferred()
-        self.piece_deferreds[piece_number] = d
-        return d
+        if self.is_last_piece():
+            print('is last piece')
+            # handle last piece
+            self.calculate_last_piece()
+            # figure out the block size for the initial request
+            if self.last_block_number == 0:
+                initial_block_size = self.last_block_size
+            else:
+                initial_block_size = self.BLOCK_SIZE
+            # send the initial request
+            self.send_request(self.piece_number, self.last_piece_offset, initial_block_size)
+            d = Deferred()
+            self.piece_deferreds[piece_number] = d
+        else:
+            # send initial request
+            self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
+            d = Deferred()
+            self.piece_deferreds[piece_number] = d
+            return d
+
+
+    def calculate_last_piece(self):
+        # find out how large last piece is supposed to be: lengthoffile - ((numpieces - 1) * piecesize):
+        self.last_piece_size = self.meta.full_length() - ((self.meta.num_pieces() - 1) * self.meta.piece_length())
+
+        # find out how large last block will be: last_piece_size % BLOCK_SIZE
+        self.last_block_size = self.last_piece_size % self.BLOCK_SIZE
+        # find (zero-based) index of last block
+        self.last_block_number = int(self.last_piece_size / self.BLOCK_SIZE)
+        if self.last_block_size == 0:
+            self.last_block_number = self.last_block_number - 1
+
+
+    # check to see if the current piece number is the last piece in the torrent
+    def is_last_piece(self):
+        piece_num = self.piece_number
+        total_pieces = self.meta.num_pieces()
+        if piece_num == total_pieces - 1:
+            return True
+        else:
+            return False
+
 
     def get_start_tick(self):
         return self.start_tick
@@ -87,7 +130,6 @@ class PeerConnection(object):
     # returns whether the piece is in our bitfield
     def piece_in_bitfield(self, piece_number):
         return self._bitfield[piece_number]
-
 
     # should callback to TorrentManager
     # called when a piece is complete. the piece is in piece_array
@@ -135,7 +177,6 @@ class PeerConnection(object):
     # Once a piece is downloaded, validate it using the hash in torrent file before returning to TorrentManager
     def validate_piece(self, piece_array):
         thishash = hashlib.sha1(piece_array).digest()
-
         start = self.piece_number * self.PIECE_HASH_SIZE
         if thishash == self.meta.piece_hashes()[start:start + self.PIECE_HASH_SIZE]:
             logger.info('validating piece %i: hash matched!', self.piece_number)
@@ -268,6 +309,27 @@ class PeerConnection(object):
         offset = int.from_bytes(msg[5:9], 'big')
         logger.debug('rcv_piece: id={} off={} len={}'.format(piece_number, offset, msg_length - 1))
 
+        # handle last pieces separately
+        if self.is_last_piece():
+            # append if it is the block we are looking for
+            if offset == self.last_piece_offset:
+                self.piece_array = self.piece_array + msg[9:]
+                # calculate the next offset
+                self.last_piece_offset = self.last_piece_offset + self.BLOCK_SIZE
+            else:
+                logger.debug('recieved offset=%d wanted offset=%d', offset, self.last_piece_offset)
+
+            # check to see if the piece is complete. otherwise request the next piece
+            if (self.last_piece_offset >= self.last_piece_size): # then piece is complete
+                logger.info('piece number %d complete', piece_number)
+                self.validate_piece(self.piece_array)
+            elif self._am_interested and not self._peer_choking:
+                # figure out the length to request. min(BLOCK_SIZE, piece_length - next_offset)
+                request_length = min(self.BLOCK_SIZE, self.last_piece_size - self.last_piece_offset)
+                self.send_request(self.piece_number, self.last_piece_offset, request_length)
+            return
+
+
         # append to piece if it is the block we were looking for
         if offset == self.next_offset * self.BLOCK_SIZE:
             self.piece_array = self.piece_array + msg[9:]
@@ -276,7 +338,6 @@ class PeerConnection(object):
             logger.debug('recieved offset=%d wanted offset=%d', offset, self.next_offset * self.BLOCK_SIZE)
 
         # check to see if piece is complete. otherwise request the next piece if we can
-        # TODO: handle last pieces (i.e. when there will be a block that is not standard size)
         if (self.next_offset * self.BLOCK_SIZE) >= self.meta.piece_length():
             logger.info('piece number %d complete', piece_number)
             self.validate_piece(self.piece_array)
