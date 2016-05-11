@@ -9,6 +9,8 @@
   * pybtracker Python library `pip install pybtracker`
   * progressbar2 Python library `pip install progressbar2`
 
+Or try `pip install -r requirements.txt`
+
 ### To Run:
  `python YamTorrent.py [file.torrent] [--progress|--verbose]`
  
