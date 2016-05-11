@@ -55,7 +55,7 @@ class TrackerConnection(object):
             logger.info('%s tracker', protocol)
             return self.get_http(url, p)
         else:
-            logger.info('tracker protocol:', protocol)
+            logger.info('tracker protocol: %s', protocol)
             d = Deferred()
             self._reactor.callLater(0.5, d.errback, ValueError('Invalid tracker protocol'))
             return d
@@ -95,7 +95,7 @@ class TrackerConnection(object):
 
     def get_http(self, url,  params):
         tracker_addr = url + '?' + urlencode(params)
-        logger.info('Connecting to tracker:', url)
+        logger.info('Connecting to tracker: %s', str(url))
         d = getPage(tracker_addr.encode())
         return d.addCallbacks(self._decode, self._page_connect_error)
 
