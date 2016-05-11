@@ -64,8 +64,6 @@ class PeerConnection(object):
     # called by TorrentManager to start download when this connection is unchoked
     def start_piece_download(self, piece_number, start_tick):
 
-        
-
         logger.info('starting download piece %i', piece_number)
         self.send_interested()
 

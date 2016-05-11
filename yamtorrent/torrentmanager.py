@@ -161,6 +161,14 @@ class TorrentManager(object):
 
                 # self.finished_downloading = True
                 logger.info('WE HAVE ALL THE PIECES')
+
+                # rename the file to remove .part
+                self.file.close()
+                try:
+                    os.rename(self.meta.name().decode("utf-8") + '.part', self.meta.name().decode("utf-8"))
+                except OSError as e:
+                    print('couldn\'t rename completed file to remove .part')
+
                 return
             # if self.next_piece >= self.meta.num_pieces():
             #     return
