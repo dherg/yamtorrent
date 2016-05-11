@@ -16,6 +16,7 @@ from enum import Enum
 from . import PeerInfo, TorrentMetadata, PeerConnection, TrackerConnection
 
 TICK_DELAY = 5
+TIMEOUT = 120
 
 logger = logging.getLogger('TorrentManager')
 
@@ -70,6 +71,21 @@ class TorrentManager(object):
     def create_temp_file(self):
         logger.info('creating blank file %s', self.meta.name().decode("utf-8") + '.part') # .part to indicate it is an incomplete file
         self.file = open(self.meta.name().decode("utf-8") + '.part', 'wb+')
+
+    # add a piece number to desire
+    # current implementation sticks it in in order
+    def add_to_desire(self, piece_id):
+
+        # loop until we find something to put it before
+        for i in range(0, len(self.desire)):
+            if piece_id < self.desire[i]:
+                self.desire.insert(i,piece_id)
+                return
+
+        # if we can't find something to put it before, put
+        # it at the end
+        self.desire.append(piece_id)
+        return
 
     # pick the next piece that we would like to request from a particular peer
     def pick_next_piece(self, peer):
@@ -163,8 +179,32 @@ class TorrentManager(object):
 
                 piece_to_request = self.pick_next_piece(p)
                 self.requests[piece_to_request] = p
-                d = p.start_piece_download(piece_to_request)
+                d = p.start_piece_download(piece_to_request, self.num_ticks)
                 d.addCallbacks(self.peer_piece_success, self.peer_piece_error)
+
+            # check for timeouts among the currently downloading peers
+            busy = self.busy_peers()
+            for p in busy:
+                
+                # if it has timed out
+                p_start_tick = p.get_start_tick()
+                diff = self.num_ticks - p_start_tick
+                if diff * TICK_DELAY > TIMEOUT:
+
+                    # get the piece number it is downloading
+                    piece_id = p.get_piece_number()
+
+                    logger.info("PEER IS CANCELLING PIECE " + str(piece_id))
+
+                    # tell it to cancel
+                    p.cancel_current_download()
+
+                    # remove the piece/peer from requests
+                    self.requests.pop(piece_id, None)
+
+                    # add the piece back to desired
+                    self.add_to_desire(piece_id)
+
 
         if self.state == self._States.SEEDING:
             self.state == self._States.DONE

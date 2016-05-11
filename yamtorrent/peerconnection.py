@@ -43,18 +43,31 @@ class PeerConnection(object):
         # return to TorrentManager (or should we return every block on reciept and have
         # TorrentManager keep track of blocks in addition to pieces?)
         # In this model the blocks of a piece are downloaded in order (0 to piece length/BLOCK_SIZE)
+        # self.piece_number = 0
+        # self.next_offset = 0
+        # self.piece_array = bytearray()
+        # self.start_tick = 0
+        self.reset_download_info()
+
+    def reset_download_info(self):
         self.piece_number = 0
         self.next_offset = 0
         self.piece_array = bytearray()
+        self.start_tick = 0
 
     # called by TorrentManager to start download when this connection is unchoked
-    def start_piece_download(self, piece_number):
+    def start_piece_download(self, piece_number, start_tick):
+
+        
 
         logger.info('starting download piece %i', piece_number)
         self.send_interested()
+
+        self.reset_download_info()
         self.piece_number = piece_number
-        self.next_offset = 0
-        self.piece_array = bytearray()
+        self.start_tick = start_tick
+
+
         if self._peer_choking:
             logger.warning('piece download requested but I\'m being choked...')
             return None # return error?
@@ -64,6 +77,12 @@ class PeerConnection(object):
         d = Deferred()
         self.piece_deferreds[piece_number] = d
         return d
+
+    def get_start_tick(self):
+        return self.start_tick
+
+    def get_piece_number(self):
+        return self.piece_number
 
     # returns whether the piece is in our bitfield
     def piece_in_bitfield(self, piece_number):
@@ -168,6 +187,14 @@ class PeerConnection(object):
         pass
 
     # self.send_request(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
+
+    def cancel_current_download(self):
+        self.send_cancel(self.piece_number, self.next_offset * self.BLOCK_SIZE, self.BLOCK_SIZE)
+        # self.piece_deferreds[self.piece_number].errback(CancelError("piece number " + str(self.piece_number) + "was cancelled"))
+        self.piece_deferreds.pop(self.piece_number,None)
+
+        self.reset_download_info()
+
 
     def send_cancel(self, piece_number, offset, length):
         logger.info('send_cancel piece %d offset=%d length=%d to %s', piece_number, offset, length, str(self.peer_info))
@@ -411,3 +438,10 @@ class ProtocolAdapterFactory(ClientFactory):
 
     def buildProtocol(self, address):
         return ProtocolAdapter(self._delegate)
+
+
+# class CancelError(Exception):
+#     def __init__(self, value):
+#         self.value = value
+#     def __str__(self):
+#         return repr(self.value)
