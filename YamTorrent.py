@@ -14,17 +14,6 @@ from yamtorrent import PeerInfo, TorrentMetadata, PeerConnection, TrackerConnect
 
 import logging
 
-logging.basicConfig(level=logging.INFO)
-
-def DEBUG(*s):
-    if debugging:
-        print(*s)
-
-
-def ERROR(*s):
-    print(*s)
-    exit()
-
 def main():
     port = b'6881'
     peer_id = b'-YT0001-' + os.urandom(12)
@@ -41,4 +30,10 @@ def main():
 
 if __name__ == '__main__':
     debugging = True
+    if '--progress' in sys.argv:
+        logging.basicConfig(level=logging.CRITICAL)
+    elif '--verbose' in sys.argv:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
     main()

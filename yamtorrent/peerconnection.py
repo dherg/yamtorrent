@@ -77,7 +77,7 @@ class PeerConnection(object):
             return None # return error?
 
         if self.is_last_piece():
-            print('is last piece')
+            logger.info('is last piece')
             # handle last piece
             self.calculate_last_piece()
             # figure out the block size for the initial request
@@ -273,9 +273,11 @@ class PeerConnection(object):
 
         # update bitfield to reflect
         have_id = struct.unpack("!I",msg[1:msg_length])[0]
-        self._bitfield[have_id] = 1
-
-        pass
+        try:
+            self._bitfield[have_id] = 1
+        except TypeError:
+            logger.warning('Received have for client that did not send a valid bitfield.')
+            pass
 
     def rcv_bitfield(self, msg, msg_length):
         # parse bitfield

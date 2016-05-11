@@ -11,6 +11,8 @@ from twisted.internet.task import LoopingCall
 from twisted.internet.defer import Deferred
 from twisted.web.client import getPage
 import logging
+from progressbar import ProgressBar
+import progressbar
 from enum import Enum
 
 from . import PeerInfo, TorrentMetadata, PeerConnection, TrackerConnection
@@ -41,7 +43,7 @@ class TorrentManager(object):
         self.next_piece = 0
         self.mybitfield = BitArray(int(self.meta.num_pieces()))
         self._reactor = reactor if reactor else treactor
-
+        self._bar = None
         self.state = self._States.INITIAL
 
         # self.finished_downloading = False
@@ -140,6 +142,17 @@ class TorrentManager(object):
     def timer_tick(self):
         self.num_ticks += 1
 
+        if self.state == self._States.DOWNLOADING and not self._bar and '--progress' in sys.argv:
+            num_pieces = self.meta.num_pieces()
+
+            self._bar = progressbar.ProgressBar(maxval=num_pieces)
+            self._bar.start()
+        elif self._bar is not None:
+            self._bar.update(sum(self.mybitfield))
+
+        if self.state == self._States.DONE:
+            bar.finish()
+
 
 
         # could use num_ticks as a timer for timing out requests
@@ -168,7 +181,7 @@ class TorrentManager(object):
                 try:
                     os.rename(self.meta.name().decode("utf-8") + '.part', self.meta.name().decode("utf-8"))
                 except OSError as e:
-                    print('couldn\'t rename completed file to remove .part')
+                    logger.error('couldn\'t rename completed file to remove .part')
 
                 return
             # if self.next_piece >= self.meta.num_pieces():
@@ -194,7 +207,7 @@ class TorrentManager(object):
             # check for timeouts among the currently downloading peers
             busy = self.busy_peers()
             for p in busy:
-                
+
                 # if it has timed out
                 p_start_tick = p.get_start_tick()
                 diff = self.num_ticks - p_start_tick
@@ -252,7 +265,8 @@ class TorrentManager(object):
     def peer_piece_success(self, result):
         (peer, piece_id, piece_array) = result
         logger.info('received_piece %d from %s.', piece_id, str(peer.peer_info))
-
+        if self._bar is not None:
+            self._bar.update(sum(self.mybitfield))
         #if we already had this piece, don't bother
         if self.mybitfield[piece_id] == 1:
             return
@@ -274,7 +288,7 @@ class TorrentManager(object):
 
 
     def peer_piece_error(self, peer, piece_id, error):
-        print('peer_piece_error', str(peer.peer_info))
+        logger.error('peer_piece_error', str(peer.peer_info))
         pass
 
 
