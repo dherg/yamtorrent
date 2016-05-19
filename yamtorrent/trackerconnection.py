@@ -69,19 +69,21 @@ class TrackerConnection(object):
         print('\n')
 
         logger.info(url)
-        info_hash = params['info_hash'].upper()
+        info_hash = params['info_hash']
+
+        print('params[info_hash]=', info_hash)
 
         d = Deferred()
         async def announce():
             client = TrackerClient(announce_uri=url)
             await client.start()
             peers = await client.announce(
-                b'01234567890123456789',  # infohash
-                10000,                    # downloaded
-                40000,                    # left
-                5000,                     # uploaded
-                0,                        # event (0=none)
-                120                       # number of peers wanted
+                params['info_hash'],  # infohash
+                int(params['downloaded']),                    # downloaded
+                int(params['left']),                    # left
+                int(params['uploaded']),                     # uploaded
+                2,                        # event (0=none), 1=completed, 2=started, 3=stopped
+                50                       # number of peers wanted
             )
 
             self._peers = list(map(lambda peer_data: PeerInfo(*peer_data), peers))
