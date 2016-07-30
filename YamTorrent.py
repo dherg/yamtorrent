@@ -20,7 +20,11 @@ def main():
     meta_info = None
     logger = logging.getLogger('YamTorrent')
     try:
-        filename = sys.argv[1] if len(sys.argv) > 0 else None
+        if len(sys.argv) <= 1:
+            logger.error('NO TORRENT FILE NAME GIVEN')
+            filename = None
+        else:
+            filename = sys.argv[1]
         meta_info = TorrentMetadata(filename, peer_id)
     except FileNotFoundError:
         logger.error('INVALID FILE NAME: ' + filename)

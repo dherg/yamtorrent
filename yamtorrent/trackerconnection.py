@@ -71,8 +71,6 @@ class TrackerConnection(object):
         logger.info(url)
         info_hash = params['info_hash']
 
-        print('params[info_hash]=', info_hash)
-
         d = Deferred()
         async def announce():
             client = TrackerClient(announce_uri=url)

@@ -147,6 +147,7 @@ class PeerConnection(object):
         return self._peer_interested
 
     def connect(self, reactor):
+        logger.debug('calling connect')
         self.done = Deferred()
         d = (TCP4ClientEndpoint(reactor, self.peer_info.ip, self.peer_info.port)
              .connect(ProtocolAdapterFactory(self)))
@@ -156,6 +157,7 @@ class PeerConnection(object):
         return self.done
 
     def request_handshake(self):
+        logger.debug('request_handshake()')
         msg = struct.pack('!B', 19) + b"BitTorrent protocol" + bytearray(8) + self.meta.info_hash() + self.meta.peer_id
         self._protocol.tx_data(msg)
         self.state = self._States.WAIT_HANDSHAKE
