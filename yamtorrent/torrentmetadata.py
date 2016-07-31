@@ -1,16 +1,24 @@
 import glob
 import hashlib
 import bencodepy
+import logging
+
+logger = logging.getLogger('TorrentMetadata')
 
 class TorrentMetadata(object):
     PIECE_HASH_SIZE = 20
 
     def __init__(self, filename=None, peer_id=None):
+
+        # automatically opens first .torrent file in directory if no file given.
+        # (desired behavior?)
         filename = filename if filename else glob.glob('*.torrent')[0]
         if not filename:
             raise FileNotFoundError()
 
         self.peer_id = peer_id
+
+        logger.debug('opening torrent file {}'.format(filename))
 
         with open(filename, 'rb') as torrentfile:
             self._metadata = bencodepy.decode(torrentfile.read())

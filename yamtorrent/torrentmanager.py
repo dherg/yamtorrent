@@ -189,6 +189,7 @@ class TorrentManager(object):
 
             # might not be finished, but can't do anything
             if len(self.desire) == 0:
+                logger.debug('len(desire) == 0')
                 return
 
 
@@ -196,6 +197,7 @@ class TorrentManager(object):
             unchoked = filter(lambda p: not p.peer_choking(), idle_peers)
             for p in unchoked:
 
+                logger.debug('requesting pieces from unchoked')
                 # self.requests[self.next_piece] = p
                 # d = p.start_piece_download(self.next_piece)
 
@@ -235,7 +237,6 @@ class TorrentManager(object):
             logger.info('WE ARE QUITTING')
 
         # print('has_piece:', self.has_piece(1))
-        # print('tick =', self.num_ticks)
 
     def busy_peers(self):
         return set([p for k, p in self.requests.items()])
@@ -253,6 +254,7 @@ class TorrentManager(object):
 
         # we can now begin downloading
         self.state = self._States.DOWNLOADING
+        logger.debug('set state to DOWNLOADING')
 
         bitfield = peer.get_bitfield()
         if bitfield is not None:
@@ -270,7 +272,6 @@ class TorrentManager(object):
         #if we already had this piece, don't bother
         if self.mybitfield[piece_id] == 1:
             return
-
 
         #write this piece to file
         self.write_piece_to_file(piece_id, piece_array)

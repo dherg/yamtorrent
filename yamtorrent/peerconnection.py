@@ -458,10 +458,10 @@ class PeerConnection(object):
         self.request_handshake()
 
     def connection_lost(self):
-        logger.info('connection lost!')
+        logger.info('connection with {} lost!'.format(self.peer_info))
 
     def connection_failed(self, result):
-        logger.info('failed to connect to peer!')
+        logger.info('failed to connect to peer {}!'.format(self.peer_info))
 
     # Properties
     def get_bitfield(self):

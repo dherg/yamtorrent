@@ -29,7 +29,6 @@ def main():
     except FileNotFoundError:
         logger.error('INVALID FILE NAME: ' + filename)
         sys.exit(0)
-
     torrent = TorrentManager(meta_info, port, peer_id)
     torrent.start()
 
